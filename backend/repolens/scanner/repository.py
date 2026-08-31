@@ -7,7 +7,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pathspec
-from pathspec.pattern import Pattern
 
 from repolens.scanner.models import RepositoryScan
 
@@ -112,7 +111,9 @@ class RepositoryScanner:
         return path.relative_to(root).as_posix()
 
     def _walk(
-        self, root: Path, ignored: pathspec.PathSpec[Pattern]
+        self,
+        root: Path,
+        ignored: pathspec.PathSpec,  # type: ignore[type-arg]
     ) -> Iterator[tuple[str, list[str], list[str]]]:
         for current_root, directory_names, file_names in os.walk(
             root, topdown=True, followlinks=False
@@ -130,13 +131,16 @@ class RepositoryScanner:
             ]
             yield current_root, directory_names, file_names
 
-    def _ignored_paths(self, root: Path) -> pathspec.PathSpec[Pattern]:
+    def _ignored_paths(self, root: Path) -> pathspec.PathSpec:  # type: ignore[type-arg]
         gitignore = root / ".gitignore"
         lines = gitignore.read_text(encoding="utf-8").splitlines() if gitignore.is_file() else []
         return pathspec.GitIgnoreSpec.from_lines(lines)
 
     def _should_ignore(
-        self, candidate: Path, root: Path, ignored: pathspec.PathSpec[Pattern]
+        self,
+        candidate: Path,
+        root: Path,
+        ignored: pathspec.PathSpec,  # type: ignore[type-arg]
     ) -> bool:
         relative = self._relative(candidate, root)
         match_path = f"{relative}/" if candidate.is_dir() else relative
