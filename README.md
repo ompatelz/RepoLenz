@@ -31,6 +31,8 @@ repolens --help
 repolens --version
 repolens scan ./my-project
 repolens scan ./my-project --json
+repolens analyze ./my-project
+repolens analyze ./my-project --json
 ```
 
 The primary product command will ultimately be:
@@ -61,8 +63,10 @@ push to the default development branches.
 
 ## Roadmap
 
-The next milestones add Python symbol and import analysis, framework-aware
-detection, a directed architecture graph, and an interactive local application.
+Python analysis extracts imports, classes, functions, methods, decorators,
+inheritance, signatures, docstrings, and source ranges with the built-in AST.
+The next milestones add framework-aware detection, a directed architecture graph,
+and an interactive local application.
 Progress notes live in [`docs/progress`](docs/progress/).
 
 ## Contributing
