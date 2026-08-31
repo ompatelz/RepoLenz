@@ -1,0 +1,4 @@
+# Generated source should not participate in repository analysis.
+generated/
+*.local.py
+

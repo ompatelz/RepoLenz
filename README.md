@@ -8,10 +8,9 @@ the repository being analyzed.
 
 ## Current capabilities
 
-The foundation provides an installable Python package, a typed domain model for
-architecture graph nodes and edges, and a CLI shell. Repository scanning, Python
-analysis, framework detection, graph insights, and the browser experience are being
-built incrementally.
+RepoLens can safely inventory a repository's files, Python packages, manifests,
+configuration files, tests, source directories, and likely entry points. It also
+provides typed domain contracts that later analysis and visualization layers share.
 
 ## Requirements
 
@@ -30,6 +29,8 @@ python -m pip install -e ".[dev]"
 ```bash
 repolens --help
 repolens --version
+repolens scan ./my-project
+repolens scan ./my-project --json
 ```
 
 The primary product command will ultimately be:
@@ -60,9 +61,9 @@ push to the default development branches.
 
 ## Roadmap
 
-The next milestones add repository scanning, Python symbol and import analysis,
-framework-aware detection, a directed architecture graph, and an interactive local
-application. Progress notes live in [`docs/progress`](docs/progress/).
+The next milestones add Python symbol and import analysis, framework-aware
+detection, a directed architecture graph, and an interactive local application.
+Progress notes live in [`docs/progress`](docs/progress/).
 
 ## Contributing
 
