@@ -113,7 +113,7 @@ class RepositoryScanner:
     def _walk(
         self,
         root: Path,
-        ignored: pathspec.PathSpec,  # type: ignore[type-arg]
+        ignored: pathspec.PathSpec,
     ) -> Iterator[tuple[str, list[str], list[str]]]:
         for current_root, directory_names, file_names in os.walk(
             root, topdown=True, followlinks=False
@@ -131,7 +131,7 @@ class RepositoryScanner:
             ]
             yield current_root, directory_names, file_names
 
-    def _ignored_paths(self, root: Path) -> pathspec.PathSpec:  # type: ignore[type-arg]
+    def _ignored_paths(self, root: Path) -> pathspec.PathSpec:
         gitignore = root / ".gitignore"
         lines = gitignore.read_text(encoding="utf-8").splitlines() if gitignore.is_file() else []
         return pathspec.GitIgnoreSpec.from_lines(lines)
@@ -140,7 +140,7 @@ class RepositoryScanner:
         self,
         candidate: Path,
         root: Path,
-        ignored: pathspec.PathSpec,  # type: ignore[type-arg]
+        ignored: pathspec.PathSpec,
     ) -> bool:
         relative = self._relative(candidate, root)
         match_path = f"{relative}/" if candidate.is_dir() else relative
