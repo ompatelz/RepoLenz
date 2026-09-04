@@ -17,6 +17,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
+  "fastapi>=0.115,<1",
   "networkx>=3.4,<4",
   "pathspec>=0.12,<1",
   "pydantic>=2.10,<3",
@@ -30,6 +31,7 @@ dev = [
   "pytest>=8.3,<9",
   "ruff>=0.9,<1",
   "types-networkx>=3.4,<4",
+  "httpx>=0.28,<1",
 ]
 
 [project.scripts]
