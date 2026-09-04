@@ -22,8 +22,8 @@ it does **not** import, execute, or modify the repository being analyzed.
 - Builds a directed architecture graph with containment and resolvable-import
   relationships, graph statistics, dependency paths, neighborhoods, and cycle
   detection.
-- Serves a local, read-only API and bundled browser shell for examining one analysis
-  graph.
+- Serves a local, read-only API and bundled interactive graph explorer with search,
+  type filters, pan/zoom controls, a minimap, and a relationship inspector.
 
 ## Requirements
 
@@ -94,6 +94,7 @@ The frontend is developed separately:
 ```bash
 cd frontend
 npm ci
+npm run test
 npm run build
 ```
 

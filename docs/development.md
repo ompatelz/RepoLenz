@@ -24,15 +24,18 @@ python scripts/smoke_wheel_install.py \
   --wheel dist/repolens-*.whl \
   --fixture tests/fixtures/scanner/simple_python_project
 cd frontend && npm run build
+cd frontend && npm run test
 ```
 
 The wheel smoke test creates an isolated virtual environment, installs the built
 wheel, verifies the installed `repolens` command, scans the fixture, and writes a
 graph. It guards against editable-install-only behavior and missing console scripts.
+On Windows, its temporary virtual environment is created in an ignored checkout-local
+directory to avoid the system temporary directory's short-path alias issue.
 
 GitHub Actions runs formatting, linting, strict typing, tests, package build, wheel
-installation smoke coverage, and the frontend production build on pull requests and
-pushes to `main`.
+installation smoke coverage, frontend graph behavior tests, and the frontend production
+build on pull requests and pushes to `main`.
 
 ## Contribution workflow
 
