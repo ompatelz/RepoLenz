@@ -22,6 +22,7 @@ _DEFAULT_IGNORED_DIRECTORIES = frozenset(
         "coverage",
         ".pytest_cache",
         ".mypy_cache",
+        ".repolens",
     }
 )
 _DEPENDENCY_MANIFESTS = frozenset(

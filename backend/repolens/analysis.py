@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from repolens.cache import AnalysisCache
 from repolens.models import Edge, EdgeType, GraphDocument, Node, NodeType
 from repolens.parsers import PythonAstParser
 from repolens.scanner import RepositoryScanner
 
 
-def analyze_repository(path: Path | str) -> GraphDocument:
+def analyze_repository(path: Path | str, *, use_cache: bool = True) -> GraphDocument:
+    """Build a graph, reusing a fingerprint-validated local cache by default."""
+    if use_cache:
+        graph, _ = AnalysisCache().get_or_create(
+            path, lambda: analyze_repository(path, use_cache=False)
+        )
+        return graph
     scan = RepositoryScanner().scan(path)
     root = Path(scan.root)
     parser = PythonAstParser()

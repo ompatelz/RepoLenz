@@ -64,7 +64,8 @@ def test_excludes_ignored_and_tool_generated_content() -> None:
     assert "generated/output.py" not in scan.files
     assert "app/settings.local.py" not in scan.files
     assert not any(
-        path.startswith((".git/", ".venv/", "build/", "__pycache__/")) for path in scan.files
+        path.startswith((".git/", ".venv/", "build/", "__pycache__/", ".repolens/"))
+        for path in scan.files
     )
 
 

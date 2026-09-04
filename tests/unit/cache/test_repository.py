@@ -87,6 +87,19 @@ def test_get_or_create_reports_cache_hit_and_writes_json_payload(tmp_path: Path)
     assert payload["fingerprint"]["files"][0]["path"] == "app.py"
 
 
+def test_get_or_create_returns_analysis_when_cache_write_is_not_permitted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = AnalysisCache()
+
+    def reject_cache_write(repository: Path | str, graph: GraphDocument) -> None:
+        raise PermissionError("read-only repository")
+
+    monkeypatch.setattr(cache, "store", reject_cache_write)
+
+    assert cache.get_or_create(tmp_path, _graph) == (_graph(), False)
+
+
 def test_explicit_invalidation_removes_only_the_cache_payload(tmp_path: Path) -> None:
     (tmp_path / "app.py").write_text("answer = 42\n", encoding="utf-8")
     cache = AnalysisCache()
