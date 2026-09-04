@@ -86,6 +86,17 @@ def test_cycles_and_stats_report_directed_cycle() -> None:
     assert engine.stats() == {"nodes": 4, "edges": 5, "cycles": 1}
 
 
+def test_insights_rank_evidence_backed_dependencies() -> None:
+    insights = GraphEngine(build_document()).insights()
+
+    assert insights["cycles"] == [
+        ["module:demo.api", "module:demo.database", "module:demo.service"]
+    ]
+    assert insights["dependency_hubs"] == ["module:demo.api", "module:demo.service"]
+    assert insights["fan_out"] == ["module:demo.api"]
+    assert insights["orphans"] == []
+
+
 def test_serialize_returns_original_graph_contract() -> None:
     document = build_document()
 

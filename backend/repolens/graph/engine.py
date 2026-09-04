@@ -68,5 +68,26 @@ class GraphEngine:
             "cycles": len(self.cycles()),
         }
 
+    def insights(self) -> dict[str, list[str] | list[list[str]]]:
+        """Compute deterministic, evidence-backed architecture signals."""
+        incoming = sorted(
+            self.graph.nodes,
+            key=lambda item: (-self.graph.in_degree(item), item),
+        )
+        outgoing = sorted(
+            self.graph.nodes,
+            key=lambda item: (-self.graph.out_degree(item), item),
+        )
+        return {
+            "cycles": self.cycles(),
+            "dependency_hubs": [item for item in incoming if self.graph.in_degree(item) > 1][:10],
+            "fan_out": [item for item in outgoing if self.graph.out_degree(item) > 1][:10],
+            "orphans": sorted(
+                item
+                for item in self.graph.nodes
+                if self.graph.in_degree(item) == 0 and self.graph.out_degree(item) == 0
+            ),
+        }
+
     def serialize(self) -> GraphDocument:
         return self.document
