@@ -8,6 +8,8 @@ from pathlib import Path
 import typer
 
 from repolens import __version__
+from repolens.analysis import analyze_repository
+from repolens.graph import GraphEngine
 from repolens.parsers import PythonAstParser
 from repolens.scanner import RepositoryScan, RepositoryScanner
 
@@ -107,3 +109,41 @@ def analyze(
     typer.echo(f"Methods        {sum(item.kind.value == 'method' for item in symbols)}")
     typer.echo(f"Imports        {len(imports)}")
     typer.echo(f"Unresolved     {sum(item.kind.value == 'unresolved' for item in imports)}")
+
+
+@app.command()
+def graph(
+    path: str = typer.Argument(..., help="Repository directory to map."),
+    output: Path | None = typer.Option(None, "--output", help="Write graph JSON to this path."),
+) -> None:
+    """Build an architecture graph without executing target code."""
+    try:
+        document = analyze_repository(path)
+    except (FileNotFoundError, NotADirectoryError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+    payload = document.model_dump_json(indent=2)
+    if output:
+        output.write_text(payload, encoding="utf-8")
+        typer.echo(f"Wrote graph to {output}")
+        return
+    typer.echo(payload)
+
+
+@app.command()
+def stats(path: str = typer.Argument(..., help="Repository directory to inspect.")) -> None:
+    """Print architecture graph statistics."""
+    values = GraphEngine(analyze_repository(path)).stats()
+    for name, value in values.items():
+        typer.echo(f"{name.title():<10} {value}")
+
+
+@app.command()
+def cycles(path: str = typer.Argument(..., help="Repository directory to inspect.")) -> None:
+    """Print detected dependency cycles."""
+    found = GraphEngine(analyze_repository(path)).cycles()
+    if not found:
+        typer.echo("No dependency cycles detected.")
+        return
+    for cycle in found:
+        typer.echo(" -> ".join(cycle))
