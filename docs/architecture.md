@@ -24,6 +24,11 @@ resolved within the scanned repository. The graph engine supports directed
 neighborhoods, N-hop subgraphs, shortest dependency paths, cycles, statistics, and
 stable serialization.
 
+The bundled browser explorer renders this document with a deterministic hierarchy
+layout. It supports pan/zoom, minimap navigation, node selection, relationship
+inspection, and text/type filters. Filters intentionally hide edges whose endpoints are
+not both visible, preventing the UI from implying a relationship to an omitted node.
+
 An edge is evidence, not a claim about runtime control flow. For example, an import
 may be dynamically replaced at runtime, and a route detected from a decorator may
 be conditionally registered. Consumers should retain that distinction when

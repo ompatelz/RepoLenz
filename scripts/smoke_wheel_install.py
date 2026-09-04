@@ -40,7 +40,14 @@ def main() -> None:
     if not fixture.is_dir():
         parser.error(f"fixture is not a directory: {fixture}")
 
-    with tempfile.TemporaryDirectory(prefix="repolens-wheel-smoke-") as temporary_directory:
+    # On Windows, the system temporary path may be returned through an 8.3 alias.
+    # Python's virtual-environment launcher rejects that alias when it resolves to a
+    # different long path. A workspace-local, ignored directory keeps the smoke test
+    # isolated while avoiding that platform-specific path mismatch.
+    temporary_parent = Path.cwd() if os.name == "nt" else None
+    with tempfile.TemporaryDirectory(
+        prefix=".repolens-wheel-smoke-", dir=temporary_parent
+    ) as temporary_directory:
         environment = Path(temporary_directory) / "venv"
         venv.EnvBuilder(with_pip=True, clear=True).create(environment)
         python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
