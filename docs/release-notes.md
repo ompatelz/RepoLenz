@@ -1,0 +1,24 @@
+# Release notes
+
+## Unreleased
+
+### Added
+
+- Safe repository scanning and Python AST analysis through the `repolens` CLI.
+- Framework-aware static evidence for FastAPI, SQLAlchemy, and SQLModel.
+- Directed architecture graph generation, graph statistics, and cycle reporting.
+- Local read-only HTTP API and bundled browser experience via `repolens serve`.
+- Isolated wheel-install smoke coverage in continuous integration.
+
+### Safety and compatibility
+
+- RepoLens requires Python 3.12 or newer.
+- RepoLens analyzes repositories statically and does not execute the target code.
+- Python is the only language with semantic analysis in this release.
+
+### Known limitations
+
+- Analysis and import resolution are intentionally conservative.
+- The browser experience is local-first and the server binds to loopback only.
+- Packaging and release publishing remain manual until a package distribution target
+  is configured.

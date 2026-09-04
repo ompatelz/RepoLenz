@@ -45,6 +45,12 @@ jobs:
       - name: Build distribution artifacts
         run: python -m build
 
+      - name: Verify wheel installation and CLI smoke path
+        run: >-
+          python scripts/smoke_wheel_install.py
+          --wheel dist/repolens-*.whl
+          --fixture tests/fixtures/scanner/simple_python_project
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
