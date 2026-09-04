@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 
 from repolens.graph import GraphEngine
 from repolens.models import GraphDocument, Node
@@ -31,5 +34,9 @@ def create_app(document: GraphDocument) -> FastAPI:
     @app.get("/api/nodes/{node_id}/neighbors")
     def neighbors(node_id: str, direction: str = "both") -> list[Node]:
         return graph.neighbors(node_id, direction)
+
+    web_assets = Path(__file__).resolve().parents[1] / "web"
+    if web_assets.is_dir():
+        app.mount("/", StaticFiles(directory=web_assets, html=True), name="web")
 
     return app
