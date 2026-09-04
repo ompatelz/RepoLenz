@@ -123,7 +123,12 @@ class AnalysisCache:
         if cached is not None:
             return cached, True
         graph = build()
-        self.store(repository, graph)
+        try:
+            self.store(repository, graph)
+        except OSError:
+            # Analysis remains useful for read-only repositories; caching is an
+            # opportunistic optimization, never a prerequisite for a result.
+            pass
         return graph, False
 
     def invalidate(self, repository: Path | str) -> bool:
