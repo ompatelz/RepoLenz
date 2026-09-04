@@ -24,6 +24,10 @@ def create_app(document: GraphDocument) -> FastAPI:
     def stats() -> dict[str, int]:
         return graph.stats()
 
+    @app.get("/api/insights")
+    def insights() -> dict[str, list[str] | list[list[str]]]:
+        return graph.insights()
+
     @app.get("/api/nodes/{node_id}")
     def node(node_id: str) -> Node:
         item = graph.node(node_id)
