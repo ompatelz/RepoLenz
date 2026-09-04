@@ -22,6 +22,7 @@ dependencies = [
   "pathspec>=0.12,<1",
   "pydantic>=2.10,<3",
   "typer>=0.15,<1",
+  "uvicorn>=0.30,<1",
 ]
 
 [project.optional-dependencies]

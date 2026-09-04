@@ -6,9 +6,11 @@ import json
 from pathlib import Path
 
 import typer
+import uvicorn
 
 from repolens import __version__
 from repolens.analysis import analyze_repository
+from repolens.api import create_app
 from repolens.graph import GraphEngine
 from repolens.parsers import PythonAstParser
 from repolens.scanner import RepositoryScan, RepositoryScanner
@@ -147,3 +149,14 @@ def cycles(path: str = typer.Argument(..., help="Repository directory to inspect
         return
     for cycle in found:
         typer.echo(" -> ".join(cycle))
+
+
+@app.command()
+def serve(
+    path: str = typer.Argument(..., help="Repository directory to explore."),
+    port: int = typer.Option(7777, "--port", help="Local HTTP port."),
+) -> None:
+    """Serve a local, read-only architecture API."""
+    document = analyze_repository(path)
+    typer.echo(f"RepoLens API running at http://127.0.0.1:{port}")
+    uvicorn.run(create_app(document), host="127.0.0.1", port=port)
