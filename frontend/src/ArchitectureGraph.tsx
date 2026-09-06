@@ -76,11 +76,13 @@ export function ArchitectureGraph({
   nodes,
   selectedId,
   onSelect,
+  onDrillDown,
 }: {
   document: GraphDocument;
   nodes: GraphNode[];
   selectedId: string | null;
   onSelect: (nodeId: string) => void;
+  onDrillDown?: (nodeId: string) => void;
 }) {
   const flowNodes = useMemo(() => toFlowNodes(nodes, selectedId), [nodes, selectedId]);
   const flowEdges = useMemo(
@@ -94,6 +96,7 @@ export function ArchitectureGraph({
       edges={flowEdges}
       nodeTypes={nodeTypes}
       onNodeClick={(_, node) => onSelect(node.id)}
+      onNodeDoubleClick={(_, node) => onDrillDown?.(node.id)}
       fitView
       fitViewOptions={{ padding: 0.22, maxZoom: 1 }}
       minZoom={0.1}
