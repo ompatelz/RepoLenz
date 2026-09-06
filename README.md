@@ -64,7 +64,18 @@ repolens serve ./my-project
 
 # Generate bounded architectural intelligence for a specific node:
 repolens explain ./my-project --node module:core.service
+
+# Verify architectural boundaries and invariants in CI:
+repolens check ./my-project --strict
+
+# Export architecture to Mermaid, PlantUML, Graphviz DOT, or offline HTML report:
+repolens export ./my-project --format mermaid --output architecture.mmd
+repolens export ./my-project --format html --output architecture-report.html
+
+# Compare architecture evolution or catch PR regressions:
+repolens diff ./main-branch ./feature-branch --fail-on-regressions
 ```
+
 
 The server binds to `127.0.0.1` by default and exposes a read-only local API. Architecture explanations run locally and offline by default, or with optional OpenAI-compatible models via environment variables. See the [usage guide](docs/usage.md) for every command and endpoint.
 

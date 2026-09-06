@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.staticfiles import StaticFiles
 
 from repolens.ai import NodeExplanation, build_node_context, get_provider
+from repolens.diff import GraphDiffReport, compute_graph_diff
 from repolens.exporters import get_exporter
 from repolens.graph import GraphEngine
 from repolens.models import GraphDocument, Node
@@ -99,6 +100,11 @@ def create_app(document: GraphDocument, repo_root: Path | None = None) -> FastAP
             return Response(content=content, media_type=media_type)
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.post("/api/diff")
+    def diff_graph(target_document: GraphDocument) -> GraphDiffReport:
+        target_graph = GraphEngine(target_document)
+        return compute_graph_diff(graph, target_graph)
 
     web_assets = Path(__file__).resolve().parents[1] / "web"
 
