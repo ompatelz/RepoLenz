@@ -42,7 +42,8 @@ detected directed dependency cycles or reports that none were found.
 ## Explore in the browser
 
 ```bash
-repolens serve ./my-project
+repolens ./my-project
+repolens .
 repolens serve ./my-project --port 8787
 ```
 

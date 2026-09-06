@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import typer
 import uvicorn
+from typer.core import TyperGroup
 
 from repolens import __version__
 from repolens.analysis import analyze_repository
@@ -15,7 +17,24 @@ from repolens.graph import GraphEngine
 from repolens.parsers import PythonAstParser
 from repolens.scanner import RepositoryScan, RepositoryScanner
 
+
+class DefaultRootGroup(TyperGroup):
+    """A TyperGroup that routes direct repository paths or serve options to the serve command."""
+
+    default_command_name: str = "serve"
+
+    def parse_args(self, ctx: Any, args: list[str]) -> list[str]:
+        if not args and self.no_args_is_help:
+            return super().parse_args(ctx, args)
+        if args:
+            first = args[0]
+            if first not in self.commands and first not in ("--help", "-h", "--version"):
+                args = [self.default_command_name] + list(args)
+        return super().parse_args(ctx, args)
+
+
 app = typer.Typer(
+    cls=DefaultRootGroup,
     name="repolens",
     help="Turn a codebase into an interactive architecture map.",
     no_args_is_help=True,
@@ -157,6 +176,10 @@ def serve(
     port: int = typer.Option(7777, "--port", help="Local HTTP port."),
 ) -> None:
     """Serve a local, read-only architecture API."""
-    document = analyze_repository(path)
+    try:
+        document = analyze_repository(path)
+    except (FileNotFoundError, NotADirectoryError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
     typer.echo(f"RepoLens API running at http://127.0.0.1:{port}")
     uvicorn.run(create_app(document), host="127.0.0.1", port=port)
