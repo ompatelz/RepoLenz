@@ -60,6 +60,15 @@ def main() -> None:
         _run(str(command), "graph", str(fixture), "--output", str(graph_path))
         graph = json.loads(graph_path.read_text(encoding="utf-8"))
 
+        # Verify default root command routes to serve and checks repository path
+        default_cmd_proc = subprocess.run(
+            [str(command), str(Path(temporary_directory) / "nonexistent")],
+            capture_output=True,
+            text=True,
+        )
+        if default_cmd_proc.returncode != 2 or "Error:" not in default_cmd_proc.stderr:
+            raise RuntimeError(f"installed CLI default command failed: {default_cmd_proc.stderr}")
+
     if not version:
         raise RuntimeError("installed CLI did not print a version")
     if scan.get("root") != str(fixture):
