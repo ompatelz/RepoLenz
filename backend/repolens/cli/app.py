@@ -96,11 +96,11 @@ def _render_scan(result: RepositoryScan) -> None:
     if result.dependency_manifests:
         typer.echo("\nDependency manifests")
         for manifest in result.dependency_manifests:
-            typer.echo(f"• {manifest}")
+            typer.echo(f"- {manifest}")
     if result.entrypoints:
         typer.echo("\nPossible entry points")
         for entrypoint in result.entrypoints:
-            typer.echo(f"• {entrypoint}")
+            typer.echo(f"- {entrypoint}")
 
 
 @app.command()
@@ -237,7 +237,7 @@ def explain(
     if explanation.recommendations:
         typer.echo("\nRecommendations:")
         for rec in explanation.recommendations:
-            typer.echo(f"  • {rec}")
+            typer.echo(f"  - {rec}")
     typer.echo()
 
 
@@ -276,7 +276,7 @@ def check(
     )
 
     if not report.violations:
-        typer.echo("✓ All architectural invariants and boundary checks passed.")
+        typer.echo("[PASSED] All architectural invariants and boundary checks passed.")
     else:
         for violation in report.violations:
             loc = (
@@ -372,14 +372,14 @@ def diff(
             typer.echo(f"  - [{n.type.value}] {n.name} ({n.node_id})")
 
     if report.new_cycles:
-        typer.echo(f"\n⚠️  New Dependency Cycles ({len(report.new_cycles)}):")
+        typer.echo(f"\n[WARNING] New Dependency Cycles ({len(report.new_cycles)}):")
         for c in report.new_cycles:
-            typer.echo(f"  • {' -> '.join(c)}")
+            typer.echo(f"  - {' -> '.join(c)}")
 
     if report.broken_routes:
-        typer.echo(f"\n⚠️  Removed Public Routes ({len(report.broken_routes)}):")
+        typer.echo(f"\n[WARNING] Removed Public Routes ({len(report.broken_routes)}):")
         for r in report.broken_routes:
-            typer.echo(f"  • {r}")
+            typer.echo(f"  - {r}")
 
     typer.echo()
     if fail_on_regressions and report.has_breaking_changes:
