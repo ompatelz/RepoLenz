@@ -3,7 +3,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArchitectureGraph } from "./ArchitectureGraph";
 import { type GraphDocument, type GraphNode, type NodeType, TYPE_LABELS } from "./types";
 
-type ApiStats = { nodes: number; edges: number; cycles: number };
+type ApiStats = {
+  nodes: number;
+  edges: number;
+  cycles: number;
+  routes?: number;
+  models?: number;
+};
 type LoadState = "loading" | "ready" | "error";
 
 async function getJson<T>(url: string): Promise<T> {
@@ -105,6 +111,8 @@ export function App() {
             <a className="nav-item active" href="#architecture"><span>◇</span> Architecture</a>
             <a className="nav-item" href="#map"><span>□</span> Graph <b>{stats?.nodes ?? 0}</b></a>
             <a className="nav-item" href="#modules"><span>⌘</span> Modules <b>{graph?.nodes.filter((node) => node.type === "module").length ?? 0}</b></a>
+            <a className="nav-item" href="#routes"><span>⚡</span> Routes <b>{graph?.nodes.filter((node) => node.type === "route").length ?? 0}</b></a>
+            <a className="nav-item" href="#models"><span>⛁</span> Models <b>{graph?.nodes.filter((node) => node.type === "model").length ?? 0}</b></a>
           </nav>
           <div className="sidebar-footer">
             <div className="sidebar-heading">ANALYSIS</div>
@@ -134,7 +142,7 @@ export function App() {
               </div>
               {visibleNodes.length === 0 ? <div className="no-results"><strong>No matching nodes</strong><span>Try clearing the search or type filter.</span></div> : <ArchitectureGraph document={graph} nodes={visibleNodes} selectedId={selectedId} onSelect={setSelectedId} />}
             </div>}
-            <div className="graph-legend"><span><i className="dot module" /> Module</span><span><i className="dot symbol" /> Symbol</span><span><i className="dot route" /> Route</span></div>
+            <div className="graph-legend"><span><i className="dot module" /> Module</span><span><i className="dot symbol" /> Symbol</span><span><i className="dot route" /> Route</span><span><i className="dot model" /> Model</span></div>
           </section>
         </section>
         <aside className="inspector" aria-label="Node inspector">
