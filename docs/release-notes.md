@@ -13,14 +13,16 @@
 - Direct root CLI execution (`repolens .` / `repolens <path>`) defaulting to the local browser experience.
 - Reproducible web packaging tooling (`scripts/sync_web_assets.py`) and CI drift verification.
 - Synthetic repository benchmarking suite and automated performance regression tests.
+- JavaScript and TypeScript static analysis parser supporting ES6/CommonJS imports, classes, functions, methods, and React components.
+- Polyglot repository analysis mapping Python and JavaScript/TypeScript codebases with truthful module boundaries.
 - Local read-only HTTP API and bundled browser experience via `repolens serve`.
 - Isolated wheel-install smoke coverage in continuous integration.
 
 ### Safety and compatibility
 
 - RepoLens requires Python 3.12 or newer.
-- RepoLens analyzes repositories statically and does not execute the target code.
-- Python is the only language with semantic analysis in this release.
+- RepoLens analyzes repositories statically and does not execute target code in any language.
+- Python, JavaScript, JSX, TypeScript, and TSX files are parsed with zero external binary or runtime requirements.
 
 ### Known limitations
 

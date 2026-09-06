@@ -9,6 +9,7 @@ const TYPE_RANK: Record<NodeType, number> = {
   route: 3,
   model: 3,
   class: 3,
+  component: 3,
   function: 4,
   method: 4,
   dependency: 5,

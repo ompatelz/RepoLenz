@@ -7,6 +7,7 @@ export type NodeType =
   | "method"
   | "route"
   | "model"
+  | "component"
   | "dependency";
 
 export type GraphNode = {
@@ -36,6 +37,7 @@ export const TYPE_LABELS: Record<NodeType, string> = {
   method: "Method",
   route: "Route",
   model: "Model",
+  component: "Component",
   dependency: "Dependency",
 };
 

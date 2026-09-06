@@ -15,6 +15,7 @@ class RepositoryScan(BaseModel):
     files: list[str] = Field(default_factory=list)
     directories: list[str] = Field(default_factory=list)
     python_files: list[str] = Field(default_factory=list)
+    javascript_files: list[str] = Field(default_factory=list)
     packages: list[str] = Field(default_factory=list)
     tests: list[str] = Field(default_factory=list)
     source_directories: list[str] = Field(default_factory=list)

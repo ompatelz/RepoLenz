@@ -75,6 +75,7 @@ kbd { margin-left: auto; color: #71717a; border: 1px solid #3f3f46; border-radiu
 .architecture-node.selected { border-color:#c4b5fd; background:#201c2a; box-shadow:0 0 0 1px #8b5cf6,0 10px 28px rgba(0,0,0,.25); }
 .architecture-node.class,.architecture-node.function,.architecture-node.method { border-left-color:#c084fc; }
 .architecture-node.route,.architecture-node.model { border-left-color:#34d399; }
+.architecture-node.component { border-left-color:#38bdf8; }
 .architecture-node.repository,.architecture-node.package { border-left-color:#fbbf24; }
 .architecture-node-type { overflow:hidden; color:#a1a1aa; font-size:9px; font-weight:700; letter-spacing:.08em; text-overflow:ellipsis; text-transform:uppercase; white-space:nowrap; }
 .architecture-node strong { overflow:hidden; color:#fafafa; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }

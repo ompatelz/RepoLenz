@@ -17,6 +17,7 @@ class NodeType(StrEnum):
     METHOD = "method"
     ROUTE = "route"
     MODEL = "model"
+    COMPONENT = "component"
     DEPENDENCY = "dependency"
 
 

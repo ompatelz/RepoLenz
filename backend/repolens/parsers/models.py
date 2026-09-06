@@ -13,6 +13,7 @@ class SymbolKind(StrEnum):
     CLASS = "class"
     FUNCTION = "function"
     METHOD = "method"
+    COMPONENT = "component"
 
 
 class ImportKind(StrEnum):
