@@ -32,7 +32,48 @@ class GraphEngine:
         )
         return [cast(Node, self.graph.nodes[item]["node"]) for item in sorted(ids)]
 
+    def filter_level(self, level: str = "symbol") -> GraphDocument:
+        """Filter the graph document to a specific architectural layer."""
+        normalized = level.lower().strip()
+        allowed_types: set[NodeType]
+        if normalized in ("repository", "repo"):
+            allowed_types = {NodeType.REPOSITORY, NodeType.PACKAGE}
+        elif normalized == "module":
+            allowed_types = {NodeType.REPOSITORY, NodeType.PACKAGE, NodeType.MODULE}
+        elif normalized in ("symbol", "all", ""):
+            return self.document
+        else:
+            raise ValueError(
+                f"Invalid level '{level}'. Valid options are 'repository', "
+                "'module', 'symbol', or 'all'."
+            )
+
+        nodes = [n for n in self.document.nodes if n.type in allowed_types]
+        node_ids = {n.id for n in nodes}
+        edges = [e for e in self.document.edges if e.source in node_ids and e.target in node_ids]
+        sub = self.graph.subgraph(node_ids)
+        stats: dict[str, int | float | str] = {
+            "nodes": len(nodes),
+            "edges": len(edges),
+            "cycles": len(list(nx.simple_cycles(sub))),
+            "routes": sum(1 for n in nodes if n.type == NodeType.ROUTE),
+            "models": sum(1 for n in nodes if n.type == NodeType.MODEL),
+        }
+        return GraphDocument(
+            schema_version=self.document.schema_version,
+            metadata={**self.document.metadata, "level": normalized},
+            nodes=nodes,
+            edges=edges,
+            stats=stats,
+            insights={},
+        )
+
     def subgraph(self, node_id: str, depth: int = 1) -> GraphDocument:
+        """Compute an N-hop neighborhood subgraph around a focus node."""
+        if depth < 1:
+            raise ValueError("depth must be at least 1")
+        if node_id not in self.graph:
+            raise KeyError(f"Node not found: {node_id}")
         reached = {node_id}
         frontier = {node_id}
         for _ in range(depth):
@@ -45,12 +86,28 @@ class GraphEngine:
             for item in sorted(reached)
             if item in self.graph
         ]
+        node_ids = {n.id for n in nodes}
         edges = [
             data["edge"]
             for source, target, data in self.graph.edges(data=True)
-            if source in reached and target in reached
+            if source in node_ids and target in node_ids
         ]
-        return GraphDocument(nodes=nodes, edges=edges)
+        sub = self.graph.subgraph(node_ids)
+        stats: dict[str, int | float | str] = {
+            "nodes": len(nodes),
+            "edges": len(edges),
+            "cycles": len(list(nx.simple_cycles(sub))),
+            "routes": sum(1 for n in nodes if n.type == NodeType.ROUTE),
+            "models": sum(1 for n in nodes if n.type == NodeType.MODEL),
+        }
+        return GraphDocument(
+            schema_version=self.document.schema_version,
+            metadata={**self.document.metadata, "focus": node_id, "depth": depth},
+            nodes=nodes,
+            edges=edges,
+            stats=stats,
+            insights={},
+        )
 
     def shortest_path(self, source: str, target: str) -> list[Node]:
         return [

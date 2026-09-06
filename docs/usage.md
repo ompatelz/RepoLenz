@@ -54,11 +54,12 @@ The API is available at:
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /api/graph` | Normalized architecture graph document. |
-| `GET /api/stats` | Graph counts and cycle summary. |
+| `GET /api/graph` | Full architecture graph document; accepts `?level=repository\|module\|symbol\|all`. |
+| `GET /api/stats` | Graph counts, cycle summary, route counts, and model counts. |
 | `GET /api/insights` | Derived graph insights. |
 | `GET /api/nodes/{node_id}` | One graph node. |
 | `GET /api/nodes/{node_id}/neighbors?direction=both` | Neighboring nodes; use `in`, `out`, or `both`. |
+| `GET /api/nodes/{node_id}/subgraph?depth=1` | N-hop neighborhood subgraph bounded by depth (1–5). |
 
 ## Exit behavior
 
