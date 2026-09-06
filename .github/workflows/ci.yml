@@ -67,3 +67,5 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+      - name: Verify packaged web assets match frontend build
+        run: python3 scripts/sync_web_assets.py --check
