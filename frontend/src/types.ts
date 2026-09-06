@@ -38,3 +38,13 @@ export const TYPE_LABELS: Record<NodeType, string> = {
   model: "Model",
   dependency: "Dependency",
 };
+
+export type GraphLevel = "all" | "repository" | "module" | "symbol";
+
+export type FocusDepth = "all" | 1 | 2 | 3;
+
+export type BreadcrumbItem = {
+  id: string | null;
+  label: string;
+  kind?: NodeType;
+};

@@ -8,6 +8,7 @@
 - Framework-aware static evidence for FastAPI, SQLAlchemy, and SQLModel.
 - End-to-end integration of framework route, model, and dependency nodes into the architecture graph.
 - Directed architecture graph generation, graph statistics, and cycle reporting.
+- Semantic zoom, hierarchical breadcrumb drill-down, and neighborhood focus navigation in the web explorer.
 - Local read-only HTTP API and bundled browser experience via `repolens serve`.
 - Isolated wheel-install smoke coverage in continuous integration.
 
