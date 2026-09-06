@@ -106,3 +106,49 @@ def test_serialize_returns_original_graph_contract() -> None:
     document = build_document()
 
     assert GraphEngine(document).serialize() is document
+
+
+def test_filter_level_filters_hierarchy_and_updates_stats() -> None:
+    repository = Node(id="repository:demo", type=NodeType.REPOSITORY, name="demo")
+    module = Node(id="module:demo.main", type=NodeType.MODULE, name="main")
+    symbol = Node(id="symbol:demo.main:run", type=NodeType.FUNCTION, name="run")
+    document = GraphDocument(
+        nodes=[repository, module, symbol],
+        edges=[
+            Edge(source=repository.id, target=module.id, type=EdgeType.CONTAINS),
+            Edge(source=module.id, target=symbol.id, type=EdgeType.CONTAINS),
+        ],
+    )
+    engine = GraphEngine(document)
+
+    repo_graph = engine.filter_level("repository")
+    assert [n.id for n in repo_graph.nodes] == [repository.id]
+    assert repo_graph.stats["nodes"] == 1
+    assert repo_graph.stats["edges"] == 0
+
+    module_graph = engine.filter_level("module")
+    assert {n.id for n in module_graph.nodes} == {repository.id, module.id}
+    assert module_graph.stats["nodes"] == 2
+    assert module_graph.stats["edges"] == 1
+
+    symbol_graph = engine.filter_level("symbol")
+    assert len(symbol_graph.nodes) == 3
+
+
+def test_filter_level_rejects_invalid_levels() -> None:
+    import pytest
+
+    engine = GraphEngine(build_document())
+    with pytest.raises(ValueError, match="Invalid level"):
+        engine.filter_level("invalid_level")
+
+
+def test_subgraph_validates_bounds_and_node_existence() -> None:
+    import pytest
+
+    engine = GraphEngine(build_document())
+    with pytest.raises(ValueError, match="depth must be at least 1"):
+        engine.subgraph("module:demo.api", depth=0)
+
+    with pytest.raises(KeyError, match="Node not found"):
+        engine.subgraph("module:nonexistent", depth=1)
