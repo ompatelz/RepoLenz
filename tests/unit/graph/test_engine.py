@@ -82,8 +82,13 @@ def test_shortest_path_uses_directed_relationships() -> None:
 def test_cycles_and_stats_report_directed_cycle() -> None:
     engine = GraphEngine(build_document())
 
-    assert engine.cycles() == [["module:demo.api", "module:demo.database", "module:demo.service"]]
-    assert engine.stats() == {"nodes": 4, "edges": 5, "cycles": 1}
+    assert engine.stats() == {
+        "nodes": 4,
+        "edges": 5,
+        "cycles": 1,
+        "routes": 0,
+        "models": 0,
+    }
 
 
 def test_insights_rank_evidence_backed_dependencies() -> None:

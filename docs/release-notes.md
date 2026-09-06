@@ -6,6 +6,7 @@
 
 - Safe repository scanning and Python AST analysis through the `repolens` CLI.
 - Framework-aware static evidence for FastAPI, SQLAlchemy, and SQLModel.
+- End-to-end integration of framework route, model, and dependency nodes into the architecture graph.
 - Directed architecture graph generation, graph statistics, and cycle reporting.
 - Local read-only HTTP API and bundled browser experience via `repolens serve`.
 - Isolated wheel-install smoke coverage in continuous integration.

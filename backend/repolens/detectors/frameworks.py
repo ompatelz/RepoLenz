@@ -68,6 +68,19 @@ class FrameworkDetector:
                         for keyword in item.value.keywords:
                             if keyword.arg == "tags":
                                 router_tags[target.id] = ast.literal_eval(keyword.value)
+        model_names: set[str] = {"Base", "SQLModel", "DeclarativeBase"}
+        classes: list[ast.ClassDef] = [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
+        added = True
+        while added:
+            added = False
+            for cls_node in classes:
+                if cls_node.name == "Base" or cls_node.name in model_names:
+                    continue
+                bases = [ast.unparse(item) for item in cls_node.bases]
+                if any(item.split(".")[-1] in model_names for item in bases):
+                    model_names.add(cls_node.name)
+                    added = True
+
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 for decorator in node.decorator_list:
@@ -140,9 +153,7 @@ class FrameworkDetector:
                 )
             if isinstance(node, ast.ClassDef):
                 bases = [ast.unparse(item) for item in node.bases]
-                if node.name == "Base" or not any(
-                    item.split(".")[-1] in {"Base", "SQLModel", "DeclarativeBase"} for item in bases
-                ):
+                if node.name == "Base" or node.name not in model_names:
                     continue
                 fields = [
                     item.target.id

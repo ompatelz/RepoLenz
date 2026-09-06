@@ -17,7 +17,9 @@
   exclusions are not currently applied.
 - Import resolution is conservative. Dynamic imports, import hooks, namespace
   package edge cases, and runtime path changes can leave relationships unresolved.
-- Framework detection is heuristic static evidence, not execution tracing.
+- Framework detection is heuristic static evidence, not execution tracing. FastAPI
+  route decorators, APIRouter inclusion, `Depends` injection, and SQLAlchemy/SQLModel
+  models are extracted strictly from AST patterns without executing target code.
 - Entry points are conventional filename heuristics rather than proof of runtime
   behavior.
 - A successfully parsed file is not proof that it would execute successfully; a

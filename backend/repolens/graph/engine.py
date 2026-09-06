@@ -6,7 +6,7 @@ from typing import cast
 
 import networkx as nx
 
-from repolens.models import GraphDocument, Node
+from repolens.models import GraphDocument, Node, NodeType
 
 
 class GraphEngine:
@@ -66,6 +66,16 @@ class GraphEngine:
             "nodes": self.graph.number_of_nodes(),
             "edges": self.graph.number_of_edges(),
             "cycles": len(self.cycles()),
+            "routes": sum(
+                1
+                for _, data in self.graph.nodes(data=True)
+                if getattr(data.get("node"), "type", None) == NodeType.ROUTE
+            ),
+            "models": sum(
+                1
+                for _, data in self.graph.nodes(data=True)
+                if getattr(data.get("node"), "type", None) == NodeType.MODEL
+            ),
         }
 
     def insights(self) -> dict[str, list[str] | list[list[str]]]:
