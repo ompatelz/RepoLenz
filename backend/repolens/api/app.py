@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.staticfiles import StaticFiles
 
 from repolens.ai import NodeExplanation, build_node_context, get_provider
+from repolens.exporters import get_exporter
 from repolens.graph import GraphEngine
 from repolens.models import GraphDocument, Node
 from repolens.rules import ArchitectureRuleEngine, RuleCheckReport, load_rules
@@ -84,6 +85,20 @@ def create_app(document: GraphDocument, repo_root: Path | None = None) -> FastAP
         config = load_rules(repo_root=repo_root)
         engine = ArchitectureRuleEngine(config)
         return engine.check(graph)
+
+    @app.get("/api/export")
+    def export_graph(
+        format: str = Query(
+            default="mermaid", description="Export format: mermaid, plantuml, dot, or html"
+        ),
+    ) -> Response:
+        try:
+            exporter = get_exporter(format)
+            content = exporter.export(graph)
+            media_type = "text/html" if format.lower() == "html" else "text/plain"
+            return Response(content=content, media_type=media_type)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
 
     web_assets = Path(__file__).resolve().parents[1] / "web"
 

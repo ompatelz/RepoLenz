@@ -14,6 +14,7 @@ from repolens import __version__
 from repolens.ai import build_node_context, get_provider
 from repolens.analysis import analyze_repository
 from repolens.api import create_app
+from repolens.exporters import get_exporter
 from repolens.graph import GraphEngine
 from repolens.parsers import PythonAstParser
 from repolens.rules import ArchitectureRuleEngine, load_rules
@@ -285,3 +286,36 @@ def check(
 
     if not report.passed or (strict and report.warning_count > 0):
         raise typer.Exit(code=1)
+
+
+@app.command(name="export")
+def export_command(
+    path: str = typer.Argument(..., help="Repository directory to export."),
+    format: str = typer.Option(
+        "mermaid", "--format", "-f", help="Format: mermaid, plantuml, dot, html."
+    ),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="File to write exported diagram to."
+    ),
+) -> None:
+    """Export architecture graph to Mermaid, PlantUML, Graphviz DOT, or HTML."""
+    try:
+        repo_path = Path(path)
+        document = analyze_repository(repo_path)
+    except (FileNotFoundError, NotADirectoryError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    try:
+        exporter = get_exporter(format)
+        content = exporter.export(GraphEngine(document))
+    except ValueError as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    if output:
+        output.write_text(content, encoding="utf-8")
+        typer.echo(f"Exported {format} diagram to {output}")
+        return
+
+    typer.echo(content)
