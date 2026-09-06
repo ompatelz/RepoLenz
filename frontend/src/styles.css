@@ -81,4 +81,5 @@ kbd { margin-left: auto; color: #71717a; border: 1px solid #3f3f46; border-radiu
 .architecture-node small { overflow:hidden; color:#71717a; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
 .architecture-handle { width:7px; height:7px; border:1px solid #71717a; background:#18181b; }
 .react-flow__edge-text { pointer-events:none; }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid #a78bfa !important; outline-offset: 2px !important; }
 @media (max-width:720px) { .graph-workspace > .react-flow { min-height:402px; }.graph-workspace .map-toolbar { inset:13px 13px auto; }.graph-panel { min-height:460px; } }
