@@ -1,0 +1,5 @@
+# Enforce consistent LF line endings across platforms
+* text=auto eol=lf
+
+# Explicitly normalize distribution files
+backend/repolens/web/** text eol=lf

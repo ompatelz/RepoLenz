@@ -11,6 +11,7 @@
 - Semantic zoom, hierarchical breadcrumb drill-down, and neighborhood focus navigation in the web explorer.
 - Keyboard shortcuts (`/`, `Ctrl+K`, `Escape`) and ARIA accessibility standards throughout the browser UI.
 - Direct root CLI execution (`repolens .` / `repolens <path>`) defaulting to the local browser experience.
+- Reproducible web packaging tooling (`scripts/sync_web_assets.py`) and CI drift verification.
 - Local read-only HTTP API and bundled browser experience via `repolens serve`.
 - Isolated wheel-install smoke coverage in continuous integration.
 
