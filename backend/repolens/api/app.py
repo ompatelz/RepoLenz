@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from repolens.ai import NodeExplanation, build_node_context, get_provider
 from repolens.graph import GraphEngine
 from repolens.models import GraphDocument, Node
+from repolens.rules import ArchitectureRuleEngine, RuleCheckReport, load_rules
 
 
 def create_app(document: GraphDocument, repo_root: Path | None = None) -> FastAPI:
@@ -78,7 +79,14 @@ def create_app(document: GraphDocument, repo_root: Path | None = None) -> FastAP
                 status_code=500, detail=f"Explanation generation failed: {error}"
             ) from error
 
+    @app.get("/api/rules/check")
+    def check_rules() -> RuleCheckReport:
+        config = load_rules(repo_root=repo_root)
+        engine = ArchitectureRuleEngine(config)
+        return engine.check(graph)
+
     web_assets = Path(__file__).resolve().parents[1] / "web"
+
     if web_assets.is_dir():
         app.mount("/", StaticFiles(directory=web_assets, html=True), name="web")
 
