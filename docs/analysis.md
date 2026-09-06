@@ -11,8 +11,10 @@
 
 ## Important limitations
 
-- Analysis is Python-first. Non-Python source is inventoried but not semantically
-  parsed.
+- Python, JavaScript, JSX, TypeScript, and TSX files are statically analyzed.
+  Other source types are inventoried but not semantically parsed.
+- Cross-language relationships are never fabricated without static evidence; Python
+  and JavaScript import spaces resolve within their respective module ecosystems.
 - Only the root `.gitignore` is evaluated. Nested ignore files and global Git
   exclusions are not currently applied.
 - Import resolution is conservative. Dynamic imports, import hooks, namespace

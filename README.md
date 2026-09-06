@@ -1,22 +1,22 @@
 # RepoLens
 
-**Turn a Python codebase into a local, interactive architecture map.**
+**Turn any codebase into a local, interactive architecture map.**
 
-RepoLens is a static-analysis-first tool for understanding unfamiliar Python
-repositories. It reads source and project metadata to build an architecture graph;
-it does **not** import, execute, or modify the repository being analyzed.
+RepoLens is a static-analysis-first tool for understanding unfamiliar repositories
+(Python, JavaScript, TypeScript, React). It reads source and project metadata to build
+an architecture graph; it does **not** import, execute, or modify the repository being analyzed.
 
 > **Status:** early, local-first software. The current release is suitable for
-> exploring Python repositories and validating the analysis pipeline. Its output is
+> exploring Python, JavaScript, TypeScript, and polyglot repositories. Its output is
 > evidence from static source inspection, not a substitute for runtime tracing.
 
 ## What it does today
 
 - Safely scans repository structure while respecting the root `.gitignore` and
   excluding common generated directories.
-- Parses Python with the standard-library `ast` module to extract modules, imports,
-  classes, functions, methods, inheritance, decorators, signatures, docstrings, and
-  syntax errors.
+- Statically parses Python (via `ast`) and JavaScript/TypeScript/React to extract modules,
+  imports, classes, functions, methods, components, decorators, and signatures without
+  runtime execution.
 - Detects static evidence for FastAPI routes and dependencies plus SQLAlchemy and
   SQLModel models.
 - Builds a directed architecture graph with containment and resolvable-import
@@ -50,13 +50,16 @@ python -m pip install dist/repolens-*.whl
 ## Quick start
 
 ```bash
-# Inspect a repository without running it.
+# Launch the interactive explorer directly on the current directory:
+repolens .
+
+# Or inspect a repository without running the server:
 repolens scan ./my-project
 
-# Build and save its complete architecture graph.
+# Build and save its complete architecture graph:
 repolens graph ./my-project --output architecture.json
 
-# Open the local browser experience at http://127.0.0.1:7777.
+# Run the local server explicitly:
 repolens serve ./my-project
 ```
 

@@ -46,7 +46,26 @@ _CONFIGURATION_FILES = frozenset(
         "pyproject.toml",
     }
 )
-_ENTRYPOINT_NAMES = frozenset({"__main__.py", "main.py", "app.py", "cli.py", "manage.py"})
+_JS_TS_EXTENSIONS = frozenset({".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"})
+_ENTRYPOINT_NAMES = frozenset(
+    {
+        "__main__.py",
+        "main.py",
+        "app.py",
+        "cli.py",
+        "manage.py",
+        "index.js",
+        "index.ts",
+        "index.tsx",
+        "index.jsx",
+        "main.js",
+        "main.ts",
+        "main.tsx",
+        "app.js",
+        "app.ts",
+        "app.tsx",
+    }
+)
 _SOURCE_DIRECTORY_NAMES = frozenset({"src", "app", "backend", "lib"})
 
 
@@ -73,6 +92,9 @@ class RepositoryScanner:
         files.sort()
         directories.sort()
         python_files = [item for item in files if item.endswith(".py")]
+        javascript_files = [
+            item for item in files if any(item.endswith(ext) for ext in _JS_TS_EXTENSIONS)
+        ]
         package_markers = {
             item for item in python_files if item == "__init__.py" or item.endswith("/__init__.py")
         }
@@ -80,6 +102,7 @@ class RepositoryScanner:
             "." if item == "__init__.py" else item.removesuffix("/__init__.py")
             for item in package_markers
         )
+        all_code_files = python_files + javascript_files
 
         return RepositoryScan(
             root=str(root),
@@ -87,8 +110,9 @@ class RepositoryScanner:
             files=files,
             directories=directories,
             python_files=python_files,
+            javascript_files=javascript_files,
             packages=packages,
-            tests=[item for item in python_files if self._is_test_file(item)],
+            tests=[item for item in all_code_files if self._is_test_file(item)],
             source_directories=[
                 item for item in directories if Path(item).name in _SOURCE_DIRECTORY_NAMES
             ],
@@ -100,7 +124,7 @@ class RepositoryScanner:
                 and Path(item).suffix == ".txt"
             ],
             configuration_files=[item for item in files if Path(item).name in _CONFIGURATION_FILES],
-            entrypoints=[item for item in python_files if self._is_entrypoint(item)],
+            entrypoints=[item for item in all_code_files if self._is_entrypoint(item)],
             readme=next(
                 (item for item in files if Path(item).name.lower().startswith("readme")), None
             ),
@@ -150,8 +174,20 @@ class RepositoryScanner:
     @staticmethod
     def _is_test_file(relative_path: str) -> bool:
         path = Path(relative_path)
+        name = path.name.lower()
+        if "tests" in path.parts or "__tests__" in path.parts:
+            return True
+        if name.startswith("test_") or name.endswith("_test.py"):
+            return True
         return (
-            "tests" in path.parts or path.name.startswith("test_") or path.name.endswith("_test.py")
+            name.endswith(".test.js")
+            or name.endswith(".test.ts")
+            or name.endswith(".test.jsx")
+            or name.endswith(".test.tsx")
+            or name.endswith(".spec.js")
+            or name.endswith(".spec.ts")
+            or name.endswith(".spec.jsx")
+            or name.endswith(".spec.tsx")
         )
 
     @staticmethod
