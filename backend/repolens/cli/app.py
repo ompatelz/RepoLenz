@@ -16,6 +16,7 @@ from repolens.analysis import analyze_repository
 from repolens.api import create_app
 from repolens.graph import GraphEngine
 from repolens.parsers import PythonAstParser
+from repolens.rules import ArchitectureRuleEngine, load_rules
 from repolens.scanner import RepositoryScan, RepositoryScanner
 
 
@@ -235,3 +236,52 @@ def explain(
         for rec in explanation.recommendations:
             typer.echo(f"  • {rec}")
     typer.echo()
+
+
+@app.command()
+def check(
+    path: str = typer.Argument(..., help="Repository directory to verify."),
+    rules_file: Path | None = typer.Option(
+        None, "--rules", "-r", help="Path to custom rules JSON file."
+    ),
+    strict: bool = typer.Option(False, "--strict", help="Fail on warnings as well as errors."),
+    json_output: bool = typer.Option(False, "--json", help="Emit report as JSON."),
+) -> None:
+    """Verify architectural boundaries, invariants, and cycles."""
+    try:
+        repo_path = Path(path)
+        document = analyze_repository(repo_path)
+    except (FileNotFoundError, NotADirectoryError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    config = load_rules(rules_path=rules_file, repo_root=repo_path)
+    report = ArchitectureRuleEngine(config).check(GraphEngine(document))
+
+    if json_output:
+        typer.echo(report.model_dump_json(indent=2))
+        if not report.passed or (strict and report.warning_count > 0):
+            raise typer.Exit(code=1)
+        return
+
+    typer.echo(f"\nArchitecture Check: {repo_path.name}")
+    typer.echo("=" * 60)
+    typer.echo(f"Status:     {'PASSED' if report.passed else 'FAILED'}")
+    typer.echo(
+        f"Violations: {report.violations_count} "
+        f"({report.error_count} errors, {report.warning_count} warnings)\n"
+    )
+
+    if not report.violations:
+        typer.echo("✓ All architectural invariants and boundary checks passed.")
+    else:
+        for violation in report.violations:
+            loc = (
+                f" ({violation.path}:{violation.line})" if violation.path and violation.line else ""
+            )
+            typer.echo(
+                f"[{violation.severity.upper()}] {violation.rule_id}: {violation.message}{loc}"
+            )
+
+    if not report.passed or (strict and report.warning_count > 0):
+        raise typer.Exit(code=1)
