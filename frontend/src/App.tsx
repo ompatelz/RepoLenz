@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ArchitectureGraph } from "./ArchitectureGraph";
 import {
@@ -47,6 +47,36 @@ export function App() {
   const [drillDownNodeId, setDrillDownNodeId] = useState<string | null>(null);
   const [focusDepth, setFocusDepth] = useState<FocusDepth>("all");
   const [collapsedPackageIds, setCollapsedPackageIds] = useState<Set<string>>(new Set());
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard navigation & shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Focus search on '/' or 'Ctrl+K' / 'Cmd+K' when not already typing in an input
+      if (
+        (event.key === "/" || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k")) &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "SELECT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (event.key === "Escape") {
+        if (selectedId) {
+          setSelectedId(null);
+          setFocusDepth("all");
+        } else if (drillDownNodeId) {
+          setDrillDownNodeId(null);
+        } else if (query) {
+          setQuery("");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [drillDownNodeId, query, selectedId]);
 
   const load = useCallback(async (targetLevel: GraphLevel = level) => {
     setState("loading");
@@ -223,20 +253,24 @@ export function App() {
               {/* Breadcrumb Navigation Bar */}
               <nav className="breadcrumbs-bar" aria-label="Hierarchy breadcrumbs">
                 <span className="breadcrumbs-label">Scope:</span>
-                {breadcrumbs.map((crumb, index) => (
-                  <span key={crumb.id ?? "root"} className="breadcrumb-segment">
-                    {index > 0 && <span className="breadcrumb-sep">/</span>}
-                    <button
-                      type="button"
-                      className={`breadcrumb-btn ${crumb.id === drillDownNodeId ? "current" : ""}`}
-                      onClick={() => setDrillDownNodeId(crumb.id)}
-                      title={`Navigate to ${crumb.label}`}
-                    >
-                      {crumb.kind && <span className={`crumb-kind ${crumb.kind}`}>{crumb.kind}</span>}
-                      {crumb.label}
-                    </button>
-                  </span>
-                ))}
+                {breadcrumbs.map((crumb, index) => {
+                  const isCurrent = crumb.id === drillDownNodeId;
+                  return (
+                    <span key={crumb.id ?? "root"} className="breadcrumb-segment">
+                      {index > 0 && <span className="breadcrumb-sep" aria-hidden="true">/</span>}
+                      <button
+                        type="button"
+                        className={`breadcrumb-btn ${isCurrent ? "current" : ""}`}
+                        onClick={() => setDrillDownNodeId(crumb.id)}
+                        aria-current={isCurrent ? "page" : undefined}
+                        title={`Navigate to ${crumb.label}`}
+                      >
+                        {crumb.kind && <span className={`crumb-kind ${crumb.kind}`}>{crumb.kind}</span>}
+                        {crumb.label}
+                      </button>
+                    </span>
+                  );
+                })}
                 {drillDownNode && (
                   <button
                     type="button"
@@ -255,48 +289,51 @@ export function App() {
                 )}
               </nav>
 
+              {/* Screen reader live announcements */}
+              <div className="sr-only" aria-live="polite" aria-atomic="true">
+                {drillDownNode ? `Scope: ${drillDownNode.name}. ` : "Scope: All. "}
+                {focusDepth !== "all" && selected ? `Focus: ${focusDepth}-hop around ${selected.name}. ` : ""}
+                {`Showing ${visibleNodes.length} visible architecture elements.`}
+              </div>
+
               <div className="map-toolbar">
                 {/* Level Selector Tabs */}
                 <div className="level-tabs" role="tablist" aria-label="Architecture hierarchy levels">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={level === "all"}
-                    className={`level-tab ${level === "all" ? "active" : ""}`}
-                    onClick={() => handleLevelChange("all")}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={level === "repository"}
-                    className={`level-tab ${level === "repository" ? "active" : ""}`}
-                    onClick={() => handleLevelChange("repository")}
-                  >
-                    Repo
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={level === "module"}
-                    className={`level-tab ${level === "module" ? "active" : ""}`}
-                    onClick={() => handleLevelChange("module")}
-                  >
-                    Modules
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={level === "symbol"}
-                    className={`level-tab ${level === "symbol" ? "active" : ""}`}
-                    onClick={() => handleLevelChange("symbol")}
-                  >
-                    Symbols
-                  </button>
+                  {(["all", "repository", "module", "symbol"] as const).map((lvl) => {
+                    const labels: Record<typeof lvl, string> = {
+                      all: "All",
+                      repository: "Repo",
+                      module: "Modules",
+                      symbol: "Symbols",
+                    };
+                    return (
+                      <button
+                        key={lvl}
+                        id={`level-tab-${lvl}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={level === lvl}
+                        aria-controls="map"
+                        className={`level-tab ${level === lvl ? "active" : ""}`}
+                        onClick={() => handleLevelChange(lvl)}
+                      >
+                        {labels[lvl]}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <label><span className="sr-only">Search nodes</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search names, paths, or types…" /></label>
+                <label className="search-label" htmlFor="node-search-input">
+                  <span className="sr-only">Search nodes</span>
+                  <input
+                    id="node-search-input"
+                    ref={searchInputRef}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search names, paths, or types… (Press '/' to focus)"
+                    aria-label="Search architecture nodes"
+                  />
+                </label>
 
                 <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as NodeType | "all")} aria-label="Filter by node type">
                   <option value="all">All node types</option>
