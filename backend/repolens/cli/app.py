@@ -14,8 +14,10 @@ from repolens import __version__
 from repolens.ai import build_node_context, get_provider
 from repolens.analysis import analyze_repository
 from repolens.api import create_app
+from repolens.diff import compute_graph_diff
 from repolens.exporters import get_exporter
 from repolens.graph import GraphEngine
+from repolens.models import GraphDocument
 from repolens.parsers import PythonAstParser
 from repolens.rules import ArchitectureRuleEngine, load_rules
 from repolens.scanner import RepositoryScan, RepositoryScanner
@@ -319,3 +321,66 @@ def export_command(
         return
 
     typer.echo(content)
+
+
+@app.command()
+def diff(
+    base_path: str = typer.Argument(..., help="Base repository directory or graph JSON file."),
+    target_path: str = typer.Argument(..., help="Target repository directory or graph JSON file."),
+    fail_on_regressions: bool = typer.Option(
+        False,
+        "--fail-on-regressions",
+        help="Exit with non-zero code if breaking changes or cycles detected.",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit diff report as JSON."),
+) -> None:
+    """Compare two architecture graphs to identify additions, removals, and regressions."""
+
+    def load_doc(path_str: str) -> GraphDocument:
+        p = Path(path_str)
+        if p.is_file() and p.suffix.lower() == ".json":
+            return GraphDocument.model_validate_json(p.read_text(encoding="utf-8"))
+        return analyze_repository(p)
+
+    try:
+        base_doc = load_doc(base_path)
+        target_doc = load_doc(target_path)
+    except Exception as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    report = compute_graph_diff(GraphEngine(base_doc), GraphEngine(target_doc))
+
+    if json_output:
+        typer.echo(report.model_dump_json(indent=2))
+        if fail_on_regressions and report.has_breaking_changes:
+            raise typer.Exit(code=1)
+        return
+
+    typer.echo(f"\nArchitecture Diff: {report.base_repository} -> {report.target_repository}")
+    typer.echo("=" * 60)
+    typer.echo(f"Summary: {report.summary}\n")
+
+    if report.added_nodes:
+        typer.echo(f"Added Nodes ({len(report.added_nodes)}):")
+        for n in report.added_nodes:
+            typer.echo(f"  + [{n.type.value}] {n.name} ({n.node_id})")
+
+    if report.removed_nodes:
+        typer.echo(f"\nRemoved Nodes ({len(report.removed_nodes)}):")
+        for n in report.removed_nodes:
+            typer.echo(f"  - [{n.type.value}] {n.name} ({n.node_id})")
+
+    if report.new_cycles:
+        typer.echo(f"\n⚠️  New Dependency Cycles ({len(report.new_cycles)}):")
+        for c in report.new_cycles:
+            typer.echo(f"  • {' -> '.join(c)}")
+
+    if report.broken_routes:
+        typer.echo(f"\n⚠️  Removed Public Routes ({len(report.broken_routes)}):")
+        for r in report.broken_routes:
+            typer.echo(f"  • {r}")
+
+    typer.echo()
+    if fail_on_regressions and report.has_breaking_changes:
+        raise typer.Exit(code=1)

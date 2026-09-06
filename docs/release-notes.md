@@ -19,8 +19,12 @@
 - Strictly bounded context extractor preventing whole-codebase uploads and ensuring zero-leakage local analysis.
 - `repolens explain <path> --node <id>` CLI command for architectural role, impact, and recommendations.
 - Interactive Architecture Intelligence inspector cards in the web explorer.
+- Architecture rule engine and invariant linter (`repolens check`, `GET /api/rules/check`) enforcing layer boundaries, forbidden imports, and cycle limits.
+- Architecture exporters (`repolens export`, `GET /api/export`) generating Mermaid, PlantUML, Graphviz DOT, and offline standalone HTML reports.
+- Architecture graph diff and evolution tracking engine (`repolens diff`, `POST /api/diff`) detecting additions, removals, newly introduced cycles, and breaking route changes.
 - Local read-only HTTP API and bundled browser experience via `repolens serve`.
 - Isolated wheel-install smoke coverage in continuous integration.
+
 
 
 ### Safety and compatibility
