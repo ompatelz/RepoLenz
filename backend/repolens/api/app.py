@@ -7,11 +7,12 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 
+from repolens.ai import NodeExplanation, build_node_context, get_provider
 from repolens.graph import GraphEngine
 from repolens.models import GraphDocument, Node
 
 
-def create_app(document: GraphDocument) -> FastAPI:
+def create_app(document: GraphDocument, repo_root: Path | None = None) -> FastAPI:
     """Create a read-only local API over one analysis graph."""
     graph = GraphEngine(document)
     app = FastAPI(title="RepoLens", version="0.1.0")
@@ -55,6 +56,27 @@ def create_app(document: GraphDocument) -> FastAPI:
     @app.get("/api/nodes/{node_id}/neighbors")
     def neighbors(node_id: str, direction: str = "both") -> list[Node]:
         return graph.neighbors(node_id, direction)
+
+    @app.post("/api/nodes/{node_id}/explain")
+    @app.get("/api/nodes/{node_id}/explain")
+    def explain(
+        node_id: str,
+        provider: str | None = Query(
+            default=None, description="Explanation provider: 'offline', 'openai', or 'mock'"
+        ),
+    ) -> NodeExplanation:
+        if graph.node(node_id) is None:
+            raise HTTPException(status_code=404, detail="Node not found")
+        try:
+            active_provider = get_provider(provider)
+            context = build_node_context(graph, node_id, repo_root=repo_root)
+            return active_provider.explain(context)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        except Exception as error:
+            raise HTTPException(
+                status_code=500, detail=f"Explanation generation failed: {error}"
+            ) from error
 
     web_assets = Path(__file__).resolve().parents[1] / "web"
     if web_assets.is_dir():

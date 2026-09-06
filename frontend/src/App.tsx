@@ -12,9 +12,11 @@ import {
   type GraphDocument,
   type GraphLevel,
   type GraphNode,
+  type NodeExplanation,
   type NodeType,
   TYPE_LABELS,
 } from "./types";
+
 
 type ApiStats = {
   nodes: number;
@@ -47,8 +49,38 @@ export function App() {
   const [drillDownNodeId, setDrillDownNodeId] = useState<string | null>(null);
   const [focusDepth, setFocusDepth] = useState<FocusDepth>("all");
   const [collapsedPackageIds, setCollapsedPackageIds] = useState<Set<string>>(new Set());
+  const [explanation, setExplanation] = useState<NodeExplanation | null>(null);
+  const [explanationLoading, setExplanationLoading] = useState(false);
+  const [explanationError, setExplanationError] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Clear explanation when selection changes
+  useEffect(() => {
+    setExplanation(null);
+    setExplanationError(null);
+    setExplanationLoading(false);
+  }, [selectedId]);
+
+  const requestExplanation = useCallback(async (nodeId: string) => {
+    setExplanationLoading(true);
+    setExplanationError(null);
+    try {
+      const response = await fetch(`/api/nodes/${encodeURIComponent(nodeId)}/explain`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(`Explanation failed (${response.status})`);
+      }
+      const data = (await response.json()) as NodeExplanation;
+      setExplanation(data);
+    } catch (err) {
+      setExplanationError(err instanceof Error ? err.message : "Failed to load explanation.");
+    } finally {
+      setExplanationLoading(false);
+    }
+  }, []);
+
 
   // Keyboard navigation & shortcuts
   useEffect(() => {
@@ -472,7 +504,71 @@ export function App() {
               )}
             </div>
 
-            <section><h3>Relationships <span>{selectedEdges.length}</span></h3>{selectedEdges.length === 0 ? <p className="muted-copy">No static relationships recorded.</p> : <ul>{selectedEdges.map((edge, index) => { const relatedId = edge.source === selected.id ? edge.target : edge.source; const related = graph?.nodes.find((node) => node.id === relatedId); return <li key={`${edge.source}-${edge.target}-${index}`}><button onClick={() => setSelectedId(relatedId)} type="button"><span>{edge.source === selected.id ? "→" : "←"} {edge.type}</span><strong>{related?.name ?? relatedId}</strong></button></li>; })}</ul>}</section>
+            {/* Architecture Intelligence / Explanation */}
+            <section className="explanation-section" aria-label="Architecture Intelligence">
+              <div className="section-header-row">
+                <h3>Architecture Intelligence</h3>
+                {!explanation && !explanationLoading && (
+                  <button
+                    type="button"
+                    className="mini-button primary"
+                    onClick={() => void requestExplanation(selected.id)}
+                  >
+                    Explain node
+                  </button>
+                )}
+              </div>
+
+              {explanationLoading && (
+                <div className="explanation-status loading">
+                  <span className="spinner small" /> Synthesizing structural insights…
+                </div>
+              )}
+
+              {explanationError && (
+                <div className="explanation-status error">
+                  <p>{explanationError}</p>
+                  <button
+                    type="button"
+                    className="mini-button secondary"
+                    onClick={() => void requestExplanation(selected.id)}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {explanation && (
+                <div className="explanation-card">
+                  <div className="explanation-badges">
+                    <span className="explanation-badge role">{explanation.role}</span>
+                    <span className="explanation-badge provider">{explanation.provider}</span>
+                  </div>
+                  <p className="explanation-summary">{explanation.summary}</p>
+                  <div className="explanation-block">
+                    <h4>Impact</h4>
+                    <p>{explanation.architectural_impact}</p>
+                  </div>
+                  <div className="explanation-block">
+                    <h4>Dependencies</h4>
+                    <p>{explanation.dependencies_summary}</p>
+                  </div>
+                  {explanation.recommendations.length > 0 && (
+                    <div className="explanation-block">
+                      <h4>Recommendations</h4>
+                      <ul>
+                        {explanation.recommendations.map((rec, idx) => (
+                          <li key={idx}>{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section><h3>Relationships <span>{selectedEdges.length}</span></h3>
+{selectedEdges.length === 0 ? <p className="muted-copy">No static relationships recorded.</p> : <ul>{selectedEdges.map((edge, index) => { const relatedId = edge.source === selected.id ? edge.target : edge.source; const related = graph?.nodes.find((node) => node.id === relatedId); return <li key={`${edge.source}-${edge.target}-${index}`}><button onClick={() => setSelectedId(relatedId)} type="button"><span>{edge.source === selected.id ? "→" : "←"} {edge.type}</span><strong>{related?.name ?? relatedId}</strong></button></li>; })}</ul>}</section>
             {Object.keys(selected.metadata).length > 0 && <section><h3>Metadata</h3><dl>{Object.entries(selected.metadata).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{typeof value === "string" ? value : JSON.stringify(value)}</dd></div>)}</dl></section>}
           </div>}
         </aside>

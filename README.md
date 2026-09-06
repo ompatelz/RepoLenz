@@ -61,10 +61,13 @@ repolens graph ./my-project --output architecture.json
 
 # Run the local server explicitly:
 repolens serve ./my-project
+
+# Generate bounded architectural intelligence for a specific node:
+repolens explain ./my-project --node module:core.service
 ```
 
-The server binds to `127.0.0.1` by default and exposes a read-only local API. See
-the [usage guide](docs/usage.md) for every command and endpoint.
+The server binds to `127.0.0.1` by default and exposes a read-only local API. Architecture explanations run locally and offline by default, or with optional OpenAI-compatible models via environment variables. See the [usage guide](docs/usage.md) for every command and endpoint.
+
 
 ## Safety and scope
 

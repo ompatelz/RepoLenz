@@ -50,3 +50,14 @@ export type BreadcrumbItem = {
   label: string;
   kind?: NodeType;
 };
+
+export type NodeExplanation = {
+  node_id: string;
+  provider: string;
+  summary: string;
+  role: string;
+  architectural_impact: string;
+  dependencies_summary: string;
+  recommendations: string[];
+};
+

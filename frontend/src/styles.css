@@ -83,4 +83,24 @@ kbd { margin-left: auto; color: #71717a; border: 1px solid #3f3f46; border-radiu
 .architecture-handle { width:7px; height:7px; border:1px solid #71717a; background:#18181b; }
 .react-flow__edge-text { pointer-events:none; }
 button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid #a78bfa !important; outline-offset: 2px !important; }
+.explanation-section { margin-top: 14px; border-top: 1px solid #27272a; padding-top: 12px; }
+.section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.section-header-row h3 { margin: 0; font-size: 11px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: .08em; }
+.mini-button.primary { background: #8b5cf6; border-color: #a78bfa; color: #ffffff; flex: 0 0 auto; }
+.mini-button.primary:hover { background: #7c3aed; }
+.explanation-status { font-size: 11px; color: #a1a1aa; padding: 8px 10px; background: #18181b; border: 1px solid #27272a; border-radius: 6px; }
+.explanation-status.loading { display: flex; align-items: center; gap: 8px; }
+.explanation-status.error { border-color: #ef4444; color: #f87171; display: flex; flex-direction: column; gap: 6px; }
+.explanation-card { background: #151519; border: 1px solid #3f3f46; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+.explanation-badges { display: flex; gap: 6px; }
+.explanation-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 2px 6px; border-radius: 4px; }
+.explanation-badge.role { background: #312e81; color: #c7d2fe; border: 1px solid #4338ca; }
+.explanation-badge.provider { background: #27272a; color: #a1a1aa; border: 1px solid #3f3f46; }
+.explanation-summary { font-size: 11px; line-height: 1.45; color: #e4e4e7; margin: 0; }
+.explanation-block h4 { margin: 0 0 4px 0; font-size: 10px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: .06em; }
+.explanation-block p { margin: 0; font-size: 11px; line-height: 1.4; color: #d4d4d8; }
+.explanation-block ul { margin: 0; padding-left: 16px; font-size: 11px; color: #d4d4d8; line-height: 1.4; }
+.explanation-block li { margin-bottom: 4px; }
+.spinner.small { width: 12px; height: 12px; border-width: 2px; }
 @media (max-width:720px) { .graph-workspace > .react-flow { min-height:402px; }.graph-workspace .map-toolbar { inset:13px 13px auto; }.graph-panel { min-height:460px; } }
+

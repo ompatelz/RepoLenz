@@ -11,6 +11,7 @@ import uvicorn
 from typer.core import TyperGroup
 
 from repolens import __version__
+from repolens.ai import build_node_context, get_provider
 from repolens.analysis import analyze_repository
 from repolens.api import create_app
 from repolens.graph import GraphEngine
@@ -177,9 +178,60 @@ def serve(
 ) -> None:
     """Serve a local, read-only architecture API."""
     try:
-        document = analyze_repository(path)
+        repo_path = Path(path)
+        document = analyze_repository(repo_path)
     except (FileNotFoundError, NotADirectoryError) as error:
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
     typer.echo(f"RepoLens API running at http://127.0.0.1:{port}")
-    uvicorn.run(create_app(document), host="127.0.0.1", port=port)
+    uvicorn.run(create_app(document, repo_root=repo_path), host="127.0.0.1", port=port)
+
+
+@app.command()
+def explain(
+    path: str = typer.Argument(..., help="Repository directory containing the node."),
+    node_id: str = typer.Option(
+        ..., "--node", "-n", help="Node ID to explain (e.g. module or symbol)."
+    ),
+    provider: str = typer.Option(
+        "offline", "--provider", "-p", help="Provider: 'offline', 'openai', or 'mock'."
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit explanation as JSON."),
+) -> None:
+    """Generate an architectural explanation for a graph node."""
+    try:
+        repo_path = Path(path)
+        document = analyze_repository(repo_path)
+    except (FileNotFoundError, NotADirectoryError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=2) from error
+
+    graph_engine = GraphEngine(document)
+    if graph_engine.node(node_id) is None:
+        typer.echo(f"Error: Node '{node_id}' not found in architecture graph.", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        active_provider = get_provider(provider)
+        context = build_node_context(graph_engine, node_id, repo_root=repo_path)
+        explanation = active_provider.explain(context)
+    except Exception as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    if json_output:
+        typer.echo(explanation.model_dump_json(indent=2))
+        return
+
+    typer.echo(f"\nArchitecture Explanation: {explanation.node_id}")
+    typer.echo("=" * 60)
+    typer.echo(f"Role:                  {explanation.role}")
+    typer.echo(f"Provider:              {explanation.provider}")
+    typer.echo(f"\nSummary:\n  {explanation.summary}")
+    typer.echo(f"\nArchitectural Impact:\n  {explanation.architectural_impact}")
+    typer.echo(f"\nDependencies Context:\n  {explanation.dependencies_summary}")
+    if explanation.recommendations:
+        typer.echo("\nRecommendations:")
+        for rec in explanation.recommendations:
+            typer.echo(f"  • {rec}")
+    typer.echo()

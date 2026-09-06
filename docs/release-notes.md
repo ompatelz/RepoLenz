@@ -15,8 +15,13 @@
 - Synthetic repository benchmarking suite and automated performance regression tests.
 - JavaScript and TypeScript static analysis parser supporting ES6/CommonJS imports, classes, functions, methods, and React components.
 - Polyglot repository analysis mapping Python and JavaScript/TypeScript codebases with truthful module boundaries.
+- Optional AI and offline architecture explanation subsystem with provider abstraction (`offline`, `openai`, `mock`).
+- Strictly bounded context extractor preventing whole-codebase uploads and ensuring zero-leakage local analysis.
+- `repolens explain <path> --node <id>` CLI command for architectural role, impact, and recommendations.
+- Interactive Architecture Intelligence inspector cards in the web explorer.
 - Local read-only HTTP API and bundled browser experience via `repolens serve`.
 - Isolated wheel-install smoke coverage in continuous integration.
+
 
 ### Safety and compatibility
 
