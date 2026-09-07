@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   Background,
   Controls,
@@ -29,7 +29,7 @@ function nodeLocation(node: GraphNode): string | null {
   return node.line_start ? `${node.path}:${node.line_start}` : node.path;
 }
 
-function ArchitectureNode({ data, selected }: NodeProps<ArchitectureFlowNode>) {
+const ArchitectureNode = memo(function ArchitectureNode({ data, selected }: NodeProps<ArchitectureFlowNode>) {
   return (
     <div className={`architecture-node ${data.kind} ${selected ? "selected" : ""}`}>
       <Handle type="target" position={Position.Left} className="architecture-handle" />
@@ -39,37 +39,9 @@ function ArchitectureNode({ data, selected }: NodeProps<ArchitectureFlowNode>) {
       <Handle type="source" position={Position.Right} className="architecture-handle" />
     </div>
   );
-}
+});
 
 const nodeTypes = { architecture: ArchitectureNode };
-
-function toFlowNodes(nodes: GraphNode[], selectedId: string | null): ArchitectureFlowNode[] {
-  return layoutNodes(nodes)
-    .map((node) => {
-      return {
-        id: node.id,
-        type: "architecture",
-        position: node.position,
-        selected: node.id === selectedId,
-        data: { kind: node.type, title: node.name, subtitle: nodeLocation(node) },
-      };
-    });
-}
-
-function toFlowEdges(edges: GraphDocument["edges"]): Edge[] {
-  return edges
-    .map((edge, index) => ({
-      id: `${edge.source}-${edge.target}-${edge.type}-${index}`,
-      source: edge.source,
-      target: edge.target,
-      type: "smoothstep",
-      label: edge.type,
-      labelStyle: { fill: "#a1a1aa", fontSize: 10 },
-      labelBgStyle: { fill: "#0c0c0e", fillOpacity: 0.9 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: "#52525b" },
-      style: { stroke: "#52525b", strokeWidth: 1.25 },
-    }));
-}
 
 export function ArchitectureGraph({
   document,
@@ -84,11 +56,57 @@ export function ArchitectureGraph({
   onSelect: (nodeId: string) => void;
   onDrillDown?: (nodeId: string) => void;
 }) {
-  const flowNodes = useMemo(() => toFlowNodes(nodes, selectedId), [nodes, selectedId]);
-  const flowEdges = useMemo(
-    () => toFlowEdges(visibleEdges(document.edges, nodes)),
+  // 1. Memoize layout positioning so it only computes when nodes list changes (avoids recalculation on selection)
+  const positionedNodes = useMemo(() => layoutNodes(nodes), [nodes]);
+
+  // 2. React Flow nodes update selection flag in O(N) without recalculating layout
+  const flowNodes = useMemo(() => {
+    return positionedNodes.map((node) => ({
+      id: node.id,
+      type: "architecture" as const,
+      position: node.position,
+      selected: node.id === selectedId,
+      data: { kind: node.type, title: node.name, subtitle: nodeLocation(node) },
+    }));
+  }, [positionedNodes, selectedId]);
+
+  // 3. Filter visible edges
+  const activeEdges = useMemo(
+    () => visibleEdges(document.edges, nodes),
     [document.edges, nodes],
   );
+
+  // 4. Highlight connected edges and dim unselected edges for instant clarity
+  const flowEdges = useMemo(() => {
+    return activeEdges.map((edge, index) => {
+      const isConnected = Boolean(selectedId && (edge.source === selectedId || edge.target === selectedId));
+      const isDimmed = Boolean(selectedId && !isConnected);
+
+      return {
+        id: `${edge.source}-${edge.target}-${edge.type}-${index}`,
+        source: edge.source,
+        target: edge.target,
+        type: "smoothstep",
+        label: isConnected || !selectedId ? edge.type : undefined,
+        labelStyle: {
+          fill: isConnected ? "#e0f2fe" : "#a1a1aa",
+          fontSize: 10,
+          fontWeight: isConnected ? 600 : 400,
+        },
+        labelBgStyle: { fill: isConnected ? "#0369a1" : "#0c0c0e", fillOpacity: 0.9 },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: isConnected ? "#38bdf8" : isDimmed ? "#27272a" : "#52525b",
+        },
+        style: {
+          stroke: isConnected ? "#38bdf8" : isDimmed ? "#27272a" : "#52525b",
+          strokeWidth: isConnected ? 2 : 1.25,
+          opacity: isDimmed ? 0.35 : 1,
+        },
+        zIndex: isConnected ? 10 : 0,
+      } as Edge;
+    });
+  }, [activeEdges, selectedId]);
 
   return (
     <ReactFlow
@@ -102,6 +120,7 @@ export function ArchitectureGraph({
       minZoom={0.1}
       maxZoom={1.5}
       nodesDraggable={false}
+      onlyRenderVisibleElements={true}
       proOptions={{ hideAttribution: true }}
       aria-label="Interactive architecture graph"
     >

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import { ArchitectureGraph } from "./ArchitectureGraph";
 import {
@@ -54,6 +54,15 @@ export function App() {
   const [explanationError, setExplanationError] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [copiedId, setCopiedId] = useState(false);
+
+  const handleCopyId = useCallback((text: string) => {
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(text);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 1500);
+    }
+  }, []);
 
   // Clear explanation when selection changes
   useEffect(() => {
@@ -145,9 +154,33 @@ export function App() {
     setLevel(nextLevel);
   };
 
+  const deferredQuery = useDeferredValue(query);
+
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, GraphNode>();
+    if (graph) {
+      for (const node of graph.nodes) {
+        map.set(node.id, node);
+      }
+    }
+    return map;
+  }, [graph]);
+
+  const typeCounts = useMemo(() => {
+    const counts = { module: 0, route: 0, model: 0 };
+    if (graph) {
+      for (const node of graph.nodes) {
+        if (node.type === "module") counts.module++;
+        else if (node.type === "route") counts.route++;
+        else if (node.type === "model") counts.model++;
+      }
+    }
+    return counts;
+  }, [graph]);
+
   const drillDownNode = useMemo(
-    () => (drillDownNodeId ? graph?.nodes.find((n) => n.id === drillDownNodeId) ?? null : null),
-    [drillDownNodeId, graph],
+    () => (drillDownNodeId ? nodeMap.get(drillDownNodeId) ?? null : null),
+    [drillDownNodeId, nodeMap],
   );
 
   const breadcrumbs = useMemo(
@@ -193,7 +226,7 @@ export function App() {
   );
 
   const visibleNodes = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
+    const normalized = deferredQuery.trim().toLocaleLowerCase();
     return processedGraph.nodes.filter((node) => {
       const matchesType = typeFilter === "all" || node.type === typeFilter;
       const matchesQuery =
@@ -203,9 +236,13 @@ export function App() {
           .some((value) => value?.toLocaleLowerCase().includes(normalized));
       return matchesType && matchesQuery;
     });
-  }, [processedGraph.nodes, query, typeFilter]);
+  }, [deferredQuery, processedGraph.nodes, typeFilter]);
 
-  const selected = graph?.nodes.find((node) => node.id === selectedId) ?? null;
+  const selected = useMemo(
+    () => (selectedId ? nodeMap.get(selectedId) ?? null : null),
+    [nodeMap, selectedId],
+  );
+
   const selectedEdges = useMemo(
     () => (graph?.edges ?? []).filter((edge) => edge.source === selectedId || edge.target === selectedId),
     [graph, selectedId],
@@ -221,7 +258,7 @@ export function App() {
     typeof graph?.metadata.repository === "string" ? graph.metadata.repository : "Local repository";
 
   const handleNodeDoubleClick = (nodeId: string) => {
-    const targetNode = graph?.nodes.find((n) => n.id === nodeId);
+    const targetNode = nodeMap.get(nodeId);
     if (targetNode && (targetNode.type === "package" || targetNode.type === "module")) {
       setDrillDownNodeId(targetNode.id);
     }
@@ -250,12 +287,51 @@ export function App() {
       <section className="workspace">
         <aside className="sidebar" aria-label="Project navigation">
           <div className="sidebar-heading">EXPLORER</div>
-          <nav>
-            <a className="nav-item active" href="#architecture"><span>◇</span> Architecture</a>
-            <a className="nav-item" href="#map"><span>□</span> Graph <b>{stats?.nodes ?? 0}</b></a>
-            <a className="nav-item" href="#modules"><span>⌘</span> Modules <b>{graph?.nodes.filter((node) => node.type === "module").length ?? 0}</b></a>
-            <a className="nav-item" href="#routes"><span>⚡</span> Routes <b>{graph?.nodes.filter((node) => node.type === "route").length ?? 0}</b></a>
-            <a className="nav-item" href="#models"><span>⛁</span> Models <b>{graph?.nodes.filter((node) => node.type === "model").length ?? 0}</b></a>
+          <nav className="sidebar-nav">
+            <button
+              type="button"
+              className={`nav-item ${typeFilter === "all" && !drillDownNodeId ? "active" : ""}`}
+              onClick={() => {
+                setTypeFilter("all");
+                setDrillDownNodeId(null);
+                setQuery("");
+              }}
+              aria-label="View complete architecture"
+            >
+              <span>◇</span> Architecture
+            </button>
+            <button
+              type="button"
+              className={`nav-item ${typeFilter === "all" && drillDownNodeId ? "active" : ""}`}
+              onClick={() => setTypeFilter("all")}
+              aria-label="View graph canvas"
+            >
+              <span>□</span> Graph <b>{stats?.nodes ?? 0}</b>
+            </button>
+            <button
+              type="button"
+              className={`nav-item ${typeFilter === "module" ? "active" : ""}`}
+              onClick={() => setTypeFilter((curr) => (curr === "module" ? "all" : "module"))}
+              aria-label="Filter modules"
+            >
+              <span>⌘</span> Modules <b>{typeCounts.module}</b>
+            </button>
+            <button
+              type="button"
+              className={`nav-item ${typeFilter === "route" ? "active" : ""}`}
+              onClick={() => setTypeFilter((curr) => (curr === "route" ? "all" : "route"))}
+              aria-label="Filter routes"
+            >
+              <span>⚡</span> Routes <b>{typeCounts.route}</b>
+            </button>
+            <button
+              type="button"
+              className={`nav-item ${typeFilter === "model" ? "active" : ""}`}
+              onClick={() => setTypeFilter((curr) => (curr === "model" ? "all" : "model"))}
+              aria-label="Filter models"
+            >
+              <span>⛁</span> Models <b>{typeCounts.model}</b>
+            </button>
           </nav>
           <div className="sidebar-footer">
             <div className="sidebar-heading">ANALYSIS</div>
@@ -414,7 +490,20 @@ export function App() {
         <aside className="inspector" aria-label="Node inspector">
           <div className="inspector-header"><span>INSPECTOR</span>{selected && <button className="close-button" onClick={() => { setSelectedId(null); setFocusDepth("all"); }} type="button" aria-label="Close inspector">×</button>}</div>
           {!selected ? <div className="inspector-empty"><div className="empty-icon small">◇</div><h2>Nothing selected</h2><p>Select a node in the graph to inspect its source, focus its neighborhood, and drill down.</p></div> : <div className="inspector-detail">
-            <span className={`type-chip ${selected.type}`}>{TYPE_LABELS[selected.type]}</span><h2>{selected.name}</h2><p className="node-id">{selected.id}</p>
+            <span className={`type-chip ${selected.type}`}>{TYPE_LABELS[selected.type]}</span>
+            <h2>{selected.name}</h2>
+            <div className="node-id-row">
+              <p className="node-id">{selected.id}</p>
+              <button
+                type="button"
+                className="copy-button"
+                onClick={() => handleCopyId(selected.id)}
+                title="Copy node ID to clipboard"
+                aria-label="Copy node ID"
+              >
+                {copiedId ? "✓ Copied" : "Copy"}
+              </button>
+            </div>
             {nodeLocation(selected) && <div className="source-location">{nodeLocation(selected)}</div>}
 
             {/* Navigation & Focus Actions */}
@@ -568,7 +657,7 @@ export function App() {
             </section>
 
             <section><h3>Relationships <span>{selectedEdges.length}</span></h3>
-{selectedEdges.length === 0 ? <p className="muted-copy">No static relationships recorded.</p> : <ul>{selectedEdges.map((edge, index) => { const relatedId = edge.source === selected.id ? edge.target : edge.source; const related = graph?.nodes.find((node) => node.id === relatedId); return <li key={`${edge.source}-${edge.target}-${index}`}><button onClick={() => setSelectedId(relatedId)} type="button"><span>{edge.source === selected.id ? "→" : "←"} {edge.type}</span><strong>{related?.name ?? relatedId}</strong></button></li>; })}</ul>}</section>
+{selectedEdges.length === 0 ? <p className="muted-copy">No static relationships recorded.</p> : <ul>{selectedEdges.map((edge, index) => { const relatedId = edge.source === selected.id ? edge.target : edge.source; const related = nodeMap.get(relatedId); return <li key={`${edge.source}-${edge.target}-${index}`}><button onClick={() => setSelectedId(relatedId)} type="button"><span>{edge.source === selected.id ? "→" : "←"} {edge.type}</span><strong>{related?.name ?? relatedId}</strong></button></li>; })}</ul>}</section>
             {Object.keys(selected.metadata).length > 0 && <section><h3>Metadata</h3><dl>{Object.entries(selected.metadata).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{typeof value === "string" ? value : JSON.stringify(value)}</dd></div>)}</dl></section>}
           </div>}
         </aside>
