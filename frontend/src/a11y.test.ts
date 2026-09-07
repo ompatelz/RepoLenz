@@ -74,4 +74,41 @@ describe("accessibility and navigation contracts", () => {
       "Scope: backend. Focus: 2-hop around analysis. Showing 8 visible architecture elements.",
     );
   });
+
+  it("correctly parses route methods and paths from metadata and fallback strings", async () => {
+    const { parseRouteDetails } = await import("./App");
+
+    const explicitRoute: GraphNode = {
+      id: "route:app.api:GET:/api/graph",
+      type: "route",
+      name: "GET /api/graph",
+      path: "app/api.py",
+      line_start: 42,
+      line_end: 50,
+      metadata: { method: "GET", path: "/api/graph", handler: "get_graph" },
+    };
+    expect(parseRouteDetails(explicitRoute)).toEqual({ method: "GET", path: "/api/graph" });
+
+    const fallbackRoute: GraphNode = {
+      id: "route:legacy:POST:/submit",
+      type: "route",
+      name: "POST /submit",
+      path: "app/legacy.py",
+      line_start: 10,
+      line_end: 15,
+      metadata: {},
+    };
+    expect(parseRouteDetails(fallbackRoute)).toEqual({ method: "POST", path: "/submit" });
+
+    const singleWordRoute: GraphNode = {
+      id: "route:simple:/health",
+      type: "route",
+      name: "/health",
+      path: "app/health.py",
+      line_start: 1,
+      line_end: 5,
+      metadata: {},
+    };
+    expect(parseRouteDetails(singleWordRoute)).toEqual({ method: "GET", path: "/health" });
+  });
 });

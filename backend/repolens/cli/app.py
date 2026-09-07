@@ -96,11 +96,11 @@ def _render_scan(result: RepositoryScan) -> None:
     if result.dependency_manifests:
         typer.echo("\nDependency manifests")
         for manifest in result.dependency_manifests:
-            typer.echo(f"• {manifest}")
+            typer.echo(f"- {manifest}")
     if result.entrypoints:
         typer.echo("\nPossible entry points")
         for entrypoint in result.entrypoints:
-            typer.echo(f"• {entrypoint}")
+            typer.echo(f"- {entrypoint}")
 
 
 @app.command()
@@ -175,12 +175,7 @@ def cycles(path: str = typer.Argument(..., help="Repository directory to inspect
         typer.echo(" -> ".join(cycle))
 
 
-@app.command()
-def serve(
-    path: str = typer.Argument(..., help="Repository directory to explore."),
-    port: int = typer.Option(7777, "--port", help="Local HTTP port."),
-) -> None:
-    """Serve a local, read-only architecture API."""
+def _run_server(path: str, port: int, *, open_browser: bool = False) -> None:
     try:
         repo_path = Path(path)
         document = analyze_repository(repo_path)
@@ -188,7 +183,30 @@ def serve(
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
     typer.echo(f"RepoLens API running at http://127.0.0.1:{port}")
+    if open_browser:
+        import threading
+        import webbrowser
+
+        threading.Timer(0.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
     uvicorn.run(create_app(document, repo_root=repo_path), host="127.0.0.1", port=port)
+
+
+@app.command()
+def serve(
+    path: str = typer.Argument(..., help="Repository directory to explore."),
+    port: int = typer.Option(7777, "--port", help="Local HTTP port."),
+) -> None:
+    """Serve a local, read-only architecture API."""
+    _run_server(path, port, open_browser=False)
+
+
+@app.command()
+def view(
+    path: str = typer.Argument(..., help="Repository directory to explore."),
+    port: int = typer.Option(7777, "--port", help="Local HTTP port."),
+) -> None:
+    """Open the interactive architecture explorer in your browser."""
+    _run_server(path, port, open_browser=True)
 
 
 @app.command()
@@ -237,7 +255,7 @@ def explain(
     if explanation.recommendations:
         typer.echo("\nRecommendations:")
         for rec in explanation.recommendations:
-            typer.echo(f"  • {rec}")
+            typer.echo(f"  - {rec}")
     typer.echo()
 
 
@@ -276,7 +294,7 @@ def check(
     )
 
     if not report.violations:
-        typer.echo("✓ All architectural invariants and boundary checks passed.")
+        typer.echo("[PASSED] All architectural invariants and boundary checks passed.")
     else:
         for violation in report.violations:
             loc = (
@@ -372,14 +390,14 @@ def diff(
             typer.echo(f"  - [{n.type.value}] {n.name} ({n.node_id})")
 
     if report.new_cycles:
-        typer.echo(f"\n⚠️  New Dependency Cycles ({len(report.new_cycles)}):")
+        typer.echo(f"\n[WARNING] New Dependency Cycles ({len(report.new_cycles)}):")
         for c in report.new_cycles:
-            typer.echo(f"  • {' -> '.join(c)}")
+            typer.echo(f"  - {' -> '.join(c)}")
 
     if report.broken_routes:
-        typer.echo(f"\n⚠️  Removed Public Routes ({len(report.broken_routes)}):")
+        typer.echo(f"\n[WARNING] Removed Public Routes ({len(report.broken_routes)}):")
         for r in report.broken_routes:
-            typer.echo(f"  • {r}")
+            typer.echo(f"  - {r}")
 
     typer.echo()
     if fail_on_regressions and report.has_breaking_changes:
