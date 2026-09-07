@@ -37,7 +37,29 @@ function nodeLocation(node: GraphNode): string | null {
   return node.path ? (node.line_start ? `${node.path}:${node.line_start}` : node.path) : null;
 }
 
+export function parseRouteDetails(node: GraphNode): { method: string; path: string } {
+  let method = typeof node.metadata.method === "string" ? node.metadata.method : "";
+  let path = typeof node.metadata.path === "string" ? node.metadata.path : "";
+  if (!method || !path) {
+    const parts = node.name.split(" ");
+    if (parts.length >= 2) {
+      method = method || parts[0];
+      path = path || parts.slice(1).join(" ");
+    } else {
+      method = method || "GET";
+      path = path || node.name;
+    }
+  }
+  return {
+    method: method.toUpperCase(),
+    path,
+  };
+}
+
+export type ExplorerView = "architecture" | "graph" | "modules" | "routes" | "models";
+
 export function App() {
+  const [activeView, setActiveView] = useState<ExplorerView>("architecture");
   const [state, setState] = useState<LoadState>("loading");
   const [graph, setGraph] = useState<GraphDocument | null>(null);
   const [stats, setStats] = useState<ApiStats | null>(null);
@@ -178,6 +200,52 @@ export function App() {
     return counts;
   }, [graph]);
 
+  const routeNodes = useMemo(() => {
+    if (!graph) return [];
+    return graph.nodes.filter((node) => node.type === "route");
+  }, [graph]);
+
+  const modelNodes = useMemo(() => {
+    if (!graph) return [];
+    return graph.nodes.filter((node) => node.type === "model");
+  }, [graph]);
+
+  const moduleNodes = useMemo(() => {
+    if (!graph) return [];
+    return graph.nodes.filter((node) => node.type === "module");
+  }, [graph]);
+
+  const filteredRoutes = useMemo(() => {
+    const q = deferredQuery.trim().toLowerCase();
+    if (!q) return routeNodes;
+    return routeNodes.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        (r.path && r.path.toLowerCase().includes(q)) ||
+        (typeof r.metadata.handler === "string" && r.metadata.handler.toLowerCase().includes(q)),
+    );
+  }, [deferredQuery, routeNodes]);
+
+  const filteredModels = useMemo(() => {
+    const q = deferredQuery.trim().toLowerCase();
+    if (!q) return modelNodes;
+    return modelNodes.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        (m.path && m.path.toLowerCase().includes(q)) ||
+        (typeof m.metadata.table_name === "string" &&
+          m.metadata.table_name.toLowerCase().includes(q)),
+    );
+  }, [deferredQuery, modelNodes]);
+
+  const filteredModules = useMemo(() => {
+    const q = deferredQuery.trim().toLowerCase();
+    if (!q) return moduleNodes;
+    return moduleNodes.filter(
+      (m) => m.name.toLowerCase().includes(q) || (m.path && m.path.toLowerCase().includes(q)),
+    );
+  }, [deferredQuery, moduleNodes]);
+
   const drillDownNode = useMemo(
     () => (drillDownNodeId ? nodeMap.get(drillDownNodeId) ?? null : null),
     [drillDownNodeId, nodeMap],
@@ -248,11 +316,38 @@ export function App() {
     [graph, selectedId],
   );
 
+  const inspectNodeOnGraph = useCallback((nodeId: string) => {
+    setDrillDownNodeId(null);
+    setTypeFilter("all");
+    setSelectedId(nodeId);
+    setActiveView("architecture");
+  }, []);
+
   const cards = [
     { label: "Nodes", value: stats?.nodes ?? "—", detail: "Architecture elements" },
     { label: "Relationships", value: stats?.edges ?? "—", detail: "Static evidence links" },
     { label: "Cycles", value: stats?.cycles ?? "—", detail: "Dependency cycles" },
-    { label: "Visible", value: state === "ready" ? visibleNodes.length : "—", detail: "Current map filter" },
+    {
+      label: "Visible",
+      value:
+        state === "ready"
+          ? activeView === "routes"
+            ? filteredRoutes.length
+            : activeView === "models"
+              ? filteredModels.length
+              : activeView === "modules"
+                ? filteredModules.length
+                : visibleNodes.length
+          : "—",
+      detail:
+        activeView === "routes"
+          ? "Matched routes"
+          : activeView === "models"
+            ? "Matched models"
+            : activeView === "modules"
+              ? "Matched modules"
+              : "Current map filter",
+    },
   ];
   const repositoryName =
     typeof graph?.metadata.repository === "string" ? graph.metadata.repository : "Local repository";
@@ -290,45 +385,55 @@ export function App() {
           <nav className="sidebar-nav">
             <button
               type="button"
-              className={`nav-item ${typeFilter === "all" && !drillDownNodeId ? "active" : ""}`}
+              className={`nav-item ${activeView === "architecture" ? "active" : ""}`}
               onClick={() => {
+                setActiveView("architecture");
                 setTypeFilter("all");
                 setDrillDownNodeId(null);
                 setQuery("");
               }}
-              aria-label="View complete architecture"
+              aria-label="View architecture map"
             >
               <span>◇</span> Architecture
             </button>
             <button
               type="button"
-              className={`nav-item ${typeFilter === "all" && drillDownNodeId ? "active" : ""}`}
-              onClick={() => setTypeFilter("all")}
-              aria-label="View graph canvas"
+              className={`nav-item ${activeView === "graph" ? "active" : ""}`}
+              onClick={() => {
+                setActiveView("graph");
+                setTypeFilter("all");
+              }}
+              aria-label="View full dependency graph"
             >
               <span>□</span> Graph <b>{stats?.nodes ?? 0}</b>
             </button>
             <button
               type="button"
-              className={`nav-item ${typeFilter === "module" ? "active" : ""}`}
-              onClick={() => setTypeFilter((curr) => (curr === "module" ? "all" : "module"))}
-              aria-label="Filter modules"
+              className={`nav-item ${activeView === "modules" ? "active" : ""}`}
+              onClick={() => {
+                setActiveView("modules");
+              }}
+              aria-label="View modules directory"
             >
               <span>⌘</span> Modules <b>{typeCounts.module}</b>
             </button>
             <button
               type="button"
-              className={`nav-item ${typeFilter === "route" ? "active" : ""}`}
-              onClick={() => setTypeFilter((curr) => (curr === "route" ? "all" : "route"))}
-              aria-label="Filter routes"
+              className={`nav-item ${activeView === "routes" ? "active" : ""}`}
+              onClick={() => {
+                setActiveView("routes");
+              }}
+              aria-label="View API routes catalog"
             >
               <span>⚡</span> Routes <b>{typeCounts.route}</b>
             </button>
             <button
               type="button"
-              className={`nav-item ${typeFilter === "model" ? "active" : ""}`}
-              onClick={() => setTypeFilter((curr) => (curr === "model" ? "all" : "model"))}
-              aria-label="Filter models"
+              className={`nav-item ${activeView === "models" ? "active" : ""}`}
+              onClick={() => {
+                setActiveView("models");
+              }}
+              aria-label="View database models catalog"
             >
               <span>⛁</span> Models <b>{typeCounts.model}</b>
             </button>
@@ -341,8 +446,32 @@ export function App() {
         </aside>
         <section className="content" id="architecture">
           <div className="content-header">
-            <div><p className="eyebrow">ARCHITECTURE MAP</p><h1>Understand the shape of your codebase.</h1></div>
+            <div>
+              <p className="eyebrow">
+                {activeView === "architecture" && "ARCHITECTURE MAP"}
+                {activeView === "graph" && "DEPENDENCY GRAPH"}
+                {activeView === "modules" && "MODULES DIRECTORY"}
+                {activeView === "routes" && "API ROUTES CATALOG"}
+                {activeView === "models" && "DATABASE MODELS CATALOG"}
+              </p>
+              <h1>
+                {activeView === "architecture" && "Understand the shape of your codebase."}
+                {activeView === "graph" && "Interactive node relationship graph."}
+                {activeView === "modules" && "All detected modules and packages."}
+                {activeView === "routes" && "All public HTTP endpoints and handlers."}
+                {activeView === "models" && "All database ORM models and tables."}
+              </h1>
+            </div>
             <div className="header-actions">
+              {activeView !== "architecture" && activeView !== "graph" && (
+                <button
+                  className="button secondary"
+                  onClick={() => setActiveView("architecture")}
+                  type="button"
+                >
+                  Back to Architecture Map
+                </button>
+              )}
               {selected && (
                 <button className="button secondary" onClick={() => { setSelectedId(null); setFocusDepth("all"); }} type="button">
                   Clear selection
@@ -353,139 +482,415 @@ export function App() {
           <div className="stats-grid">
             {cards.map((stat) => <article className="stat-card" key={stat.label}><p>{stat.label}</p><strong>{stat.value}</strong><span>{stat.detail}</span></article>)}
           </div>
-          <section className="graph-panel" id="map" aria-label="Architecture graph">
-            {state === "loading" && <div className="state-card"><span className="spinner" /><h2>Loading architecture map</h2><p>Reading the local analysis API…</p></div>}
-            {state === "error" && <div className="state-card"><div className="empty-icon">!</div><h2>Could not load the map</h2><p>{error ?? "Start RepoLens with repolens serve <path>, then refresh."}</p><button className="button primary" onClick={() => void load(level)} type="button">Try again</button></div>}
-            {state === "ready" && graph && graph.nodes.length === 0 && <div className="state-card"><div className="empty-icon">◇</div><h2>No architecture nodes found</h2><p>This level or analysis produced no graph nodes. Try switching to "All" or a repository with Python source files.</p><button className="button secondary" onClick={() => handleLevelChange("all")} type="button">Switch to All</button></div>}
-            {state === "ready" && graph && graph.nodes.length > 0 && <div className="graph-workspace">
-              {/* Breadcrumb Navigation Bar */}
-              <nav className="breadcrumbs-bar" aria-label="Hierarchy breadcrumbs">
-                <span className="breadcrumbs-label">Scope:</span>
-                {breadcrumbs.map((crumb, index) => {
-                  const isCurrent = crumb.id === drillDownNodeId;
-                  return (
-                    <span key={crumb.id ?? "root"} className="breadcrumb-segment">
-                      {index > 0 && <span className="breadcrumb-sep" aria-hidden="true">/</span>}
-                      <button
-                        type="button"
-                        className={`breadcrumb-btn ${isCurrent ? "current" : ""}`}
-                        onClick={() => setDrillDownNodeId(crumb.id)}
-                        aria-current={isCurrent ? "page" : undefined}
-                        title={`Navigate to ${crumb.label}`}
-                      >
-                        {crumb.kind && <span className={`crumb-kind ${crumb.kind}`}>{crumb.kind}</span>}
-                        {crumb.label}
-                      </button>
-                    </span>
-                  );
-                })}
-                {drillDownNode && (
-                  <button
-                    type="button"
-                    className="breadcrumb-reset-btn"
-                    onClick={() => setDrillDownNodeId(null)}
-                    title="Exit drill-down scope"
-                  >
-                    Reset scope
-                  </button>
-                )}
-                {focusDepth !== "all" && selected && (
-                  <span className="focus-badge" title={`Focused on ${selected.name} (${focusDepth} hop${Number(focusDepth) > 1 ? "s" : ""})`}>
-                    Focus: {focusDepth}-hop ({selected.name})
-                    <button type="button" onClick={() => setFocusDepth("all")} aria-label="Clear focus">×</button>
-                  </span>
-                )}
-              </nav>
-
-              {/* Screen reader live announcements */}
-              <div className="sr-only" aria-live="polite" aria-atomic="true">
-                {drillDownNode ? `Scope: ${drillDownNode.name}. ` : "Scope: All. "}
-                {focusDepth !== "all" && selected ? `Focus: ${focusDepth}-hop around ${selected.name}. ` : ""}
-                {`Showing ${visibleNodes.length} visible architecture elements.`}
-              </div>
-
-              <div className="map-toolbar">
-                {/* Level Selector Tabs */}
-                <div className="level-tabs" role="tablist" aria-label="Architecture hierarchy levels">
-                  {(["all", "repository", "module", "symbol"] as const).map((lvl) => {
-                    const labels: Record<typeof lvl, string> = {
-                      all: "All",
-                      repository: "Repo",
-                      module: "Modules",
-                      symbol: "Symbols",
-                    };
+          {(activeView === "architecture" || activeView === "graph") && (
+            <section className="graph-panel" id="map" aria-label="Architecture graph">
+              {state === "loading" && <div className="state-card"><span className="spinner" /><h2>Loading architecture map</h2><p>Reading the local analysis API…</p></div>}
+              {state === "error" && <div className="state-card"><div className="empty-icon">!</div><h2>Could not load the map</h2><p>{error ?? "Start RepoLens with repolens serve <path>, then refresh."}</p><button className="button primary" onClick={() => void load(level)} type="button">Try again</button></div>}
+              {state === "ready" && graph && graph.nodes.length === 0 && <div className="state-card"><div className="empty-icon">◇</div><h2>No architecture nodes found</h2><p>This level or analysis produced no graph nodes. Try switching to "All" or a repository with Python source files.</p><button className="button secondary" onClick={() => handleLevelChange("all")} type="button">Switch to All</button></div>}
+              {state === "ready" && graph && graph.nodes.length > 0 && <div className="graph-workspace">
+                {/* Breadcrumb Navigation Bar */}
+                <nav className="breadcrumbs-bar" aria-label="Hierarchy breadcrumbs">
+                  <span className="breadcrumbs-label">Scope:</span>
+                  {breadcrumbs.map((crumb, index) => {
+                    const isCurrent = crumb.id === drillDownNodeId;
                     return (
-                      <button
-                        key={lvl}
-                        id={`level-tab-${lvl}`}
-                        type="button"
-                        role="tab"
-                        aria-selected={level === lvl}
-                        aria-controls="map"
-                        className={`level-tab ${level === lvl ? "active" : ""}`}
-                        onClick={() => handleLevelChange(lvl)}
-                      >
-                        {labels[lvl]}
-                      </button>
+                      <span key={crumb.id ?? "root"} className="breadcrumb-segment">
+                        {index > 0 && <span className="breadcrumb-sep" aria-hidden="true">/</span>}
+                        <button
+                          type="button"
+                          className={`breadcrumb-btn ${isCurrent ? "current" : ""}`}
+                          onClick={() => setDrillDownNodeId(crumb.id)}
+                          aria-current={isCurrent ? "page" : undefined}
+                          title={`Navigate to ${crumb.label}`}
+                        >
+                          {crumb.kind && <span className={`crumb-kind ${crumb.kind}`}>{crumb.kind}</span>}
+                          {crumb.label}
+                        </button>
+                      </span>
                     );
                   })}
+                  {drillDownNode && (
+                    <button
+                      type="button"
+                      className="breadcrumb-reset-btn"
+                      onClick={() => setDrillDownNodeId(null)}
+                      title="Exit drill-down scope"
+                    >
+                      Reset scope
+                    </button>
+                  )}
+                  {focusDepth !== "all" && selected && (
+                    <span className="focus-badge" title={`Focused on ${selected.name} (${focusDepth} hop${Number(focusDepth) > 1 ? "s" : ""})`}>
+                      Focus: {focusDepth}-hop ({selected.name})
+                      <button type="button" onClick={() => setFocusDepth("all")} aria-label="Clear focus">×</button>
+                    </span>
+                  )}
+                </nav>
+
+                {/* Screen reader live announcements */}
+                <div className="sr-only" aria-live="polite" aria-atomic="true">
+                  {drillDownNode ? `Scope: ${drillDownNode.name}. ` : "Scope: All. "}
+                  {focusDepth !== "all" && selected ? `Focus: ${focusDepth}-hop around ${selected.name}. ` : ""}
+                  {`Showing ${visibleNodes.length} visible architecture elements.`}
                 </div>
 
-                <label className="search-label" htmlFor="node-search-input">
-                  <span className="sr-only">Search nodes</span>
-                  <input
-                    id="node-search-input"
-                    ref={searchInputRef}
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search names, paths, or types… (Press '/' to focus)"
-                    aria-label="Search architecture nodes"
+                <div className="map-toolbar">
+                  {/* Level Selector Tabs */}
+                  <div className="level-tabs" role="tablist" aria-label="Architecture hierarchy levels">
+                    {(["all", "repository", "module", "symbol"] as const).map((lvl) => {
+                      const labels: Record<typeof lvl, string> = {
+                        all: "All",
+                        repository: "Repo",
+                        module: "Modules",
+                        symbol: "Symbols",
+                      };
+                      return (
+                        <button
+                          key={lvl}
+                          id={`level-tab-${lvl}`}
+                          type="button"
+                          role="tab"
+                          aria-selected={level === lvl}
+                          aria-controls="map"
+                          className={`level-tab ${level === lvl ? "active" : ""}`}
+                          onClick={() => handleLevelChange(lvl)}
+                        >
+                          {labels[lvl]}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <label className="search-label" htmlFor="node-search-input">
+                    <span className="sr-only">Search nodes</span>
+                    <input
+                      id="node-search-input"
+                      ref={searchInputRef}
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search names, paths, or types… (Press '/' to focus)"
+                      aria-label="Search architecture nodes"
+                    />
+                  </label>
+
+                  <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as NodeType | "all")} aria-label="Filter by node type">
+                    <option value="all">All node types</option>
+                    {Object.entries(TYPE_LABELS).filter(([type]) => nodeTypes.has(type as NodeType)).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
+                  </select>
+
+                  <select
+                    value={focusDepth}
+                    onChange={(e) => setFocusDepth(e.target.value === "all" ? "all" : (Number(e.target.value) as 1 | 2 | 3))}
+                    aria-label="Neighborhood focus depth"
+                    disabled={!selectedId}
+                    title={!selectedId ? "Select a node to focus on its neighborhood" : "Filter to neighborhood"}
+                    className="focus-select"
+                  >
+                    <option value="all">Focus: Off</option>
+                    <option value="1">Focus: 1-hop</option>
+                    <option value="2">Focus: 2-hop</option>
+                    <option value="3">Focus: 3-hop</option>
+                  </select>
+                </div>
+
+                {visibleNodes.length === 0 ? (
+                  <div className="no-results">
+                    <strong>No matching nodes</strong>
+                    <span>Adjust search, reset filters, or exit focus/drill-down mode.</span>
+                    <div className="no-results-actions">
+                      {query && <button className="button secondary" onClick={() => setQuery("")} type="button">Clear search</button>}
+                      {typeFilter !== "all" && <button className="button secondary" onClick={() => setTypeFilter("all")} type="button">All types</button>}
+                      {drillDownNode && <button className="button secondary" onClick={() => setDrillDownNodeId(null)} type="button">Reset scope</button>}
+                      {focusDepth !== "all" && <button className="button secondary" onClick={() => setFocusDepth("all")} type="button">Reset focus</button>}
+                    </div>
+                  </div>
+                ) : (
+                  <ArchitectureGraph
+                    document={graph}
+                    nodes={visibleNodes}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onDrillDown={handleNodeDoubleClick}
                   />
-                </label>
+                )}
+              </div>}
+              <div className="graph-legend"><span><i className="dot module" /> Module</span><span><i className="dot symbol" /> Symbol</span><span><i className="dot route" /> Route</span><span><i className="dot model" /> Model</span></div>
+            </section>
+          )}
 
-                <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as NodeType | "all")} aria-label="Filter by node type">
-                  <option value="all">All node types</option>
-                  {Object.entries(TYPE_LABELS).filter(([type]) => nodeTypes.has(type as NodeType)).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
-                </select>
-
-                <select
-                  value={focusDepth}
-                  onChange={(e) => setFocusDepth(e.target.value === "all" ? "all" : (Number(e.target.value) as 1 | 2 | 3))}
-                  aria-label="Neighborhood focus depth"
-                  disabled={!selectedId}
-                  title={!selectedId ? "Select a node to focus on its neighborhood" : "Filter to neighborhood"}
-                  className="focus-select"
-                >
-                  <option value="all">Focus: Off</option>
-                  <option value="1">Focus: 1-hop</option>
-                  <option value="2">Focus: 2-hop</option>
-                  <option value="3">Focus: 3-hop</option>
-                </select>
+          {activeView === "routes" && (
+            <section className="catalog-panel" aria-label="API Routes Catalog">
+              <div className="catalog-header">
+                <div>
+                  <h2>API Routes ({routeNodes.length})</h2>
+                  <p className="muted-copy">Detected HTTP endpoints mapped across application routers and handlers.</p>
+                </div>
+                <div className="catalog-search">
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    className="catalog-input"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search routes or handlers… (Press '/' to focus)"
+                    aria-label="Filter routes"
+                  />
+                  {query && (
+                    <button className="button secondary" onClick={() => setQuery("")} type="button">
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {visibleNodes.length === 0 ? (
+              {state === "loading" && <div className="state-card"><span className="spinner" /><h2>Loading routes…</h2></div>}
+              {state === "error" && <div className="state-card"><div className="empty-icon">!</div><h2>Could not load routes</h2><p>{error}</p></div>}
+              {state === "ready" && filteredRoutes.length === 0 && (
                 <div className="no-results">
-                  <strong>No matching nodes</strong>
-                  <span>Adjust search, reset filters, or exit focus/drill-down mode.</span>
-                  <div className="no-results-actions">
-                    {query && <button className="button secondary" onClick={() => setQuery("")} type="button">Clear search</button>}
-                    {typeFilter !== "all" && <button className="button secondary" onClick={() => setTypeFilter("all")} type="button">All types</button>}
-                    {drillDownNode && <button className="button secondary" onClick={() => setDrillDownNodeId(null)} type="button">Reset scope</button>}
-                    {focusDepth !== "all" && <button className="button secondary" onClick={() => setFocusDepth("all")} type="button">Reset focus</button>}
-                  </div>
+                  <strong>No routes match your search</strong>
+                  <span>Try a different query or clear the filter.</span>
+                  {query && (
+                    <button className="button secondary" style={{ marginTop: 8 }} onClick={() => setQuery("")} type="button">
+                      Clear search
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <ArchitectureGraph
-                  document={graph}
-                  nodes={visibleNodes}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  onDrillDown={handleNodeDoubleClick}
-                />
               )}
-            </div>}
-            <div className="graph-legend"><span><i className="dot module" /> Module</span><span><i className="dot symbol" /> Symbol</span><span><i className="dot route" /> Route</span><span><i className="dot model" /> Model</span></div>
-          </section>
+              {state === "ready" && filteredRoutes.length > 0 && (
+                <div className="catalog-table-wrap">
+                  <table className="catalog-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 90 }}>Method</th>
+                        <th>Path</th>
+                        <th>Handler</th>
+                        <th>Location</th>
+                        <th style={{ width: 150, textAlign: "right" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRoutes.map((route) => {
+                        const { method, path } = parseRouteDetails(route);
+                        const methodClass = method.toLowerCase();
+                        const loc = nodeLocation(route);
+                        return (
+                          <tr key={route.id}>
+                            <td>
+                              <span className={`method-pill ${methodClass}`}>{method}</span>
+                            </td>
+                            <td>
+                              <code className="route-path-text">{path}</code>
+                            </td>
+                            <td>
+                              <code>{typeof route.metadata.handler === "string" ? route.metadata.handler : "—"}</code>
+                            </td>
+                            <td>
+                              <span className="muted-copy">{loc ?? "—"}</span>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <button
+                                type="button"
+                                className="inspect-btn"
+                                onClick={() => inspectNodeOnGraph(route.id)}
+                                title={`Inspect ${route.name} on graph`}
+                              >
+                                Inspect on Graph ↗
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeView === "models" && (
+            <section className="catalog-panel" aria-label="Database Models Catalog">
+              <div className="catalog-header">
+                <div>
+                  <h2>Database Models ({modelNodes.length})</h2>
+                  <p className="muted-copy">Detected ORM schemas, database entities, and persistent data models.</p>
+                </div>
+                <div className="catalog-search">
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    className="catalog-input"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search models or table names… (Press '/' to focus)"
+                    aria-label="Filter models"
+                  />
+                  {query && (
+                    <button className="button secondary" onClick={() => setQuery("")} type="button">
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {state === "loading" && <div className="state-card"><span className="spinner" /><h2>Loading models…</h2></div>}
+              {state === "error" && <div className="state-card"><div className="empty-icon">!</div><h2>Could not load models</h2><p>{error}</p></div>}
+              {state === "ready" && filteredModels.length === 0 && (
+                <div className="no-results">
+                  <strong>No models match your search</strong>
+                  <span>Try a different query or clear the filter.</span>
+                  {query && (
+                    <button className="button secondary" style={{ marginTop: 8 }} onClick={() => setQuery("")} type="button">
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              )}
+              {state === "ready" && filteredModels.length > 0 && (
+                <div className="catalog-table-wrap">
+                  <table className="catalog-table">
+                    <thead>
+                      <tr>
+                        <th>Model Name</th>
+                        <th>Table Name</th>
+                        <th>Inherits / Bases</th>
+                        <th>Location</th>
+                        <th style={{ width: 150, textAlign: "right" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredModels.map((model) => {
+                        const tableName = typeof model.metadata.table_name === "string" ? model.metadata.table_name : null;
+                        const bases = Array.isArray(model.metadata.bases)
+                          ? model.metadata.bases.join(", ")
+                          : typeof model.metadata.bases === "string"
+                          ? model.metadata.bases
+                          : null;
+                        const loc = nodeLocation(model);
+                        return (
+                          <tr key={model.id}>
+                            <td>
+                              <strong>{model.name}</strong>
+                            </td>
+                            <td>
+                              <code>{tableName ?? "—"}</code>
+                            </td>
+                            <td>
+                              <code>{bases ?? "—"}</code>
+                            </td>
+                            <td>
+                              <span className="muted-copy">{loc ?? "—"}</span>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <button
+                                type="button"
+                                className="inspect-btn"
+                                onClick={() => inspectNodeOnGraph(model.id)}
+                                title={`Inspect ${model.name} on graph`}
+                              >
+                                Inspect on Graph ↗
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeView === "modules" && (
+            <section className="catalog-panel" aria-label="Modules Directory">
+              <div className="catalog-header">
+                <div>
+                  <h2>Modules Directory ({moduleNodes.length})</h2>
+                  <p className="muted-copy">Detected Python modules and packages across the repository hierarchy.</p>
+                </div>
+                <div className="catalog-search">
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    className="catalog-input"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search modules or file paths… (Press '/' to focus)"
+                    aria-label="Filter modules"
+                  />
+                  {query && (
+                    <button className="button secondary" onClick={() => setQuery("")} type="button">
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {state === "loading" && <div className="state-card"><span className="spinner" /><h2>Loading modules…</h2></div>}
+              {state === "error" && <div className="state-card"><div className="empty-icon">!</div><h2>Could not load modules</h2><p>{error}</p></div>}
+              {state === "ready" && filteredModules.length === 0 && (
+                <div className="no-results">
+                  <strong>No modules match your search</strong>
+                  <span>Try a different query or clear the filter.</span>
+                  {query && (
+                    <button className="button secondary" style={{ marginTop: 8 }} onClick={() => setQuery("")} type="button">
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              )}
+              {state === "ready" && filteredModules.length > 0 && (
+                <div className="catalog-table-wrap">
+                  <table className="catalog-table">
+                    <thead>
+                      <tr>
+                        <th>Module Name</th>
+                        <th>File Path</th>
+                        <th style={{ width: 220, textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredModules.map((mod) => {
+                        const loc = nodeLocation(mod);
+                        return (
+                          <tr key={mod.id}>
+                            <td>
+                              <strong>{mod.name}</strong>
+                            </td>
+                            <td>
+                              <code>{loc ?? mod.path ?? "—"}</code>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <button
+                                type="button"
+                                className="inspect-btn"
+                                onClick={() => inspectNodeOnGraph(mod.id)}
+                                title={`Inspect ${mod.name} on graph`}
+                              >
+                                Inspect on Graph ↗
+                              </button>
+                              <button
+                                type="button"
+                                className="inspect-btn"
+                                style={{ marginLeft: 6 }}
+                                onClick={() => {
+                                  setDrillDownNodeId(mod.id);
+                                  setSelectedId(mod.id);
+                                  setActiveView("architecture");
+                                }}
+                                title={`Drill into ${mod.name} scope`}
+                              >
+                                Drill In ↗
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
         </section>
         <aside className="inspector" aria-label="Node inspector">
           <div className="inspector-header"><span>INSPECTOR</span>{selected && <button className="close-button" onClick={() => { setSelectedId(null); setFocusDepth("all"); }} type="button" aria-label="Close inspector">×</button>}</div>
