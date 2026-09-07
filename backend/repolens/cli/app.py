@@ -175,12 +175,7 @@ def cycles(path: str = typer.Argument(..., help="Repository directory to inspect
         typer.echo(" -> ".join(cycle))
 
 
-@app.command()
-def serve(
-    path: str = typer.Argument(..., help="Repository directory to explore."),
-    port: int = typer.Option(7777, "--port", help="Local HTTP port."),
-) -> None:
-    """Serve a local, read-only architecture API."""
+def _run_server(path: str, port: int, *, open_browser: bool = False) -> None:
     try:
         repo_path = Path(path)
         document = analyze_repository(repo_path)
@@ -188,7 +183,30 @@ def serve(
         typer.echo(f"Error: {error}", err=True)
         raise typer.Exit(code=2) from error
     typer.echo(f"RepoLens API running at http://127.0.0.1:{port}")
+    if open_browser:
+        import threading
+        import webbrowser
+
+        threading.Timer(0.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
     uvicorn.run(create_app(document, repo_root=repo_path), host="127.0.0.1", port=port)
+
+
+@app.command()
+def serve(
+    path: str = typer.Argument(..., help="Repository directory to explore."),
+    port: int = typer.Option(7777, "--port", help="Local HTTP port."),
+) -> None:
+    """Serve a local, read-only architecture API."""
+    _run_server(path, port, open_browser=False)
+
+
+@app.command()
+def view(
+    path: str = typer.Argument(..., help="Repository directory to explore."),
+    port: int = typer.Option(7777, "--port", help="Local HTTP port."),
+) -> None:
+    """Open the interactive architecture explorer in your browser."""
+    _run_server(path, port, open_browser=True)
 
 
 @app.command()

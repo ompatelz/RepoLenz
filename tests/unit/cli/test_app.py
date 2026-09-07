@@ -59,3 +59,14 @@ def test_explicit_serve_command_still_works() -> None:
         mock_run.assert_called_once()
         _, kwargs = mock_run.call_args
         assert kwargs["port"] == 8888
+
+
+def test_explicit_view_command_works() -> None:
+    fixture = Path(__file__).parents[2] / "fixtures" / "scanner" / "simple_python_project"
+    with patch("uvicorn.run") as mock_run, patch("webbrowser.open"):
+        result = runner.invoke(app, ["view", str(fixture), "--port", "8888"])
+        assert result.exit_code == 0
+        assert "RepoLens API running at http://127.0.0.1:8888" in result.output
+        mock_run.assert_called_once()
+        _, kwargs = mock_run.call_args
+        assert kwargs["port"] == 8888
